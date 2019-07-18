@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -18,20 +18,33 @@ namespace Soundscape
 			FilePathFormat = filePathFormat;
 
 			// Verify that each sound file exists
-			var invalidFileName = 
-				Direction
+
+			var fileNames = Direction
 				.AllDirections
 				.Select(x => string.Format(FilePathFormat, x.Dir))
+				.ToArray();
+
+			var invalidFileName = 
+				fileNames
 				.FirstOrDefault(x => !File.Exists(filePathFormat));
 
 			if (invalidFileName != null)
 				throw new FieldAccessException(nameof(invalidFileName) + ": " + invalidFileName);
+
+			// 
 		}
 
-		public object GetSound(Direction dir)
+		public short[] GetSoundData(Direction dir)
 		{
 			var filePath = string.Format(FilePathFormat, (int) dir.Dir);
-			
+			using (var br = new BinaryReader(File.OpenRead(filePath)))
+			{
+				var header = WaveHeader.Read(br);
+				var format = WaveFormat.Read(br);
+				var data = WaveDataChunk.Read(br);
+
+				return data.shortArray;
+			}
 		}
 	}
 }
