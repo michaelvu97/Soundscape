@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 
 namespace Soundscape
 {
@@ -7,6 +7,7 @@ namespace Soundscape
 		static void Main(string[] args)
 		{
 			Console.WriteLine("Hello World!");
+			var creator = new WaveDataCreator(44100);
 		}
 	}
 }
