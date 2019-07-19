@@ -8,7 +8,7 @@ namespace Soundscape
 	{
 		private int _numSamples;
 
-		private short[] _data;
+		public sbyte[] Data { get; }
 
 		public WaveDataCreator(int numSamples)
 		{
@@ -17,18 +17,18 @@ namespace Soundscape
 			_numSamples = numSamples;
 
 			// Stereo audio
-			_data = new short[_numSamples * 2];
+			Data = new sbyte[_numSamples * 2];
 		}
 
-		private static short AddShortsLimited(short a, short b)
+		private static sbyte AddShortsLimited(sbyte a, sbyte b)
 		{
 			unsafe
 			{
-				return (short) Math.Min(Math.Max(((int)a) + ((int)b), (int) short.MinValue), (int)short.MaxValue);
+				return (sbyte) Math.Min(Math.Max(((int)a) + ((int)b), (int) sbyte.MinValue), (int)sbyte.MaxValue);
 			}
 		}
 
-		public void AddSound(short[] soundData, Direction dir, int startTimeSample)
+		public void AddSound(sbyte[] soundData, int startTimeSample)
 		{
 			if (soundData == null)
 				throw new ArgumentNullException(nameof(soundData));
@@ -43,7 +43,7 @@ namespace Soundscape
 			var endIndex = Math.Min(startIndex + soundData.Length, _numSamples * 2);
 
 			for (var i = startIndex; i < endIndex; i++)
-				_data[i] = AddShortsLimited(_data[i], soundData[i]);
+				Data[i] = AddShortsLimited(Data[i], soundData[i - startIndex]);
 		}
 	}
 }

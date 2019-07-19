@@ -26,21 +26,27 @@ namespace Soundscape
 
 			var invalidFileName = 
 				fileNames
-				.FirstOrDefault(x => !File.Exists(filePathFormat));
+				.FirstOrDefault(x => !File.Exists(x));
 
 			if (invalidFileName != null)
-				throw new FieldAccessException(nameof(invalidFileName) + ": " + invalidFileName);
-
-			// 
+				throw new FileNotFoundException(nameof(invalidFileName) + ": " + invalidFileName);
 		}
 
-		public short[] GetSoundData(Direction dir)
+		public sbyte[] GetSoundData(Direction dir)
 		{
 			var filePath = string.Format(FilePathFormat, (int) dir.Dir);
 			using (var br = new BinaryReader(File.OpenRead(filePath)))
 			{
 				var header = WaveHeader.Read(br);
 				var format = WaveFormat.Read(br);
+
+				if (format.dwSamplesPerSec != 44100)
+					throw new ArgumentException("Invalid sample rate: " + format.dwSamplesPerSec);
+				if (format.wBitsPerSample != 16)
+					throw new ArgumentException("Invalid bit depth: " + format.wBitsPerSample);
+				if (format.wChannels != 2)
+					throw new ArgumentException("Invalid number of channels: " + format.wChannels);
+
 				var data = WaveDataChunk.Read(br);
 
 				return data.shortArray;

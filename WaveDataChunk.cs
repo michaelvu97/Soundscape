@@ -9,11 +9,11 @@ namespace Soundscape
 	{
 		public string sChunkID;
 		public uint dwChunkSize;
-		public short[] shortArray;
+		public sbyte[] shortArray;
 
 		public WaveDataChunk()
 		{
-			shortArray = new short[0];
+			shortArray = new sbyte[0];
 			dwChunkSize = 0;
 			sChunkID = "data";
 		}
@@ -22,7 +22,7 @@ namespace Soundscape
 		{
 			br.Write(sChunkID.ToCharArray());
 			br.Write(dwChunkSize);
-			foreach (short x in shortArray)
+			foreach (sbyte x in shortArray)
 				br.Write(x);
 		}
 
@@ -34,11 +34,11 @@ namespace Soundscape
 			dataChunk.dwChunkSize =  br.ReadUInt32();
 			
 			// Assume 16 bit per sample
-			var dataArrLength = dataChunk.dwChunkSize / 2;
-			dataChunk.shortArray = new short[dataArrLength];
+			var dataArrLength = dataChunk.dwChunkSize;
+			dataChunk.shortArray = new sbyte[dataArrLength];
 
 			for (uint i = 0; i < dataArrLength; i++)
-				dataChunk.shortArray[i] = br.ReadInt16();
+				dataChunk.shortArray[i] = br.ReadSByte();
 
 			return dataChunk;
 		}
