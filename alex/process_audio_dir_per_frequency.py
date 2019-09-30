@@ -6,11 +6,10 @@ import time
 import numpy as np
 from scipy.fftpack import fft
 
-def process_audio_dir():
+def fake_main():
 	form_1 = pyaudio.paInt8 # 16-bit resolution
 	chans = 2 # 1 channel
 	samp_rate = 44100 # 44.1kHz sampling rate
-	chunk = 4096 # 2^12 samples for buffer
 	record_secs = 10 # seconds to record
 	dev_index = 3 # device index found by p.get_device_info_by_index(ii)
 	frequencies = []
@@ -32,10 +31,17 @@ def process_audio_dir():
 	
 	# do this forever until program quits
 	while True:
-	
-	# Read the stream data into a variable
-		data = stream.read(chunk, exception_on_overflow=False)
-	
+	    # Read the stream data into a variable
+            data = stream.read(chunk, exception_on_overflow=False)
+
+	# stop the stream, close it, and terminate the pyaudio instantiation
+	stream.stop_stream()
+	stream.close()
+	audio.terminate()
+
+def process_audio_dir(data):
+	chunk = 4096 # 2^12 samples for buffer
+    	
 	# Convert the stream data into an integer array
 		data_int = np.fromstring(data, dtype=np.int8)
 	
@@ -93,12 +99,7 @@ def process_audio_dir():
 	
 	
 	
-	print("finished recording")
-	
-	# stop the stream, close it, and terminate the pyaudio instantiation
-	stream.stop_stream()
-	stream.close()
-	audio.terminate()
+
 
 if __name__ == "__main__":
-    process_audio_dir()
+    fake_main()
