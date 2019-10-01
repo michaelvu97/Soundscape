@@ -40,47 +40,46 @@ def initializeFrequencyArray(fArray, chan1_energies, chan2_energies):
         temp = int(samp_rate * i / chunk)
         frequencies.append(temp)
 
-def getChannelEnergies(data):
-# Convert the stream data into an integer array
-	data_int = np.fromstring(data, dtype=np.int8)
+def getChannelEnergies(data, numChannels):
+    # Convert the stream data into an integer array
+    data_int = np.fromstring(data, dtype=np.int8)
+        
+    # Get the data for n channels
+    channels = []
+    for i in range(numChannels):
+        channels[i] = np.array(data_int[i::n])
+    
+    # Compute the faurier transform of each channel
+    fftOfChannels = []
+    for i in range(numChannels):
+        channel = fft(channels[i])
+        ###########################################watch out
+        channel = np.abs(channel[0:chunk]) * 2 / (256 * chunk)
+        fftOfChannels[i] = channel
 
-# Get the data for both channels 1 and 2
-	chan1 = np.array(data_int[::2])
-	chan2 = np.array(data_int[1::2])
+    # Compute the enery in the fft from each channel
+    channelEnergies =[]
+    for j in range(numChannels):
+        channelEnergies[j] = []
+        for i in range(sources):
+            channelEnergies[i].append(0)
 
-# Compute the faurier transform of each channel
-	chan1_fft_temp = fft(chan1)
-	chan2_fft_temp = fft(chan2)
-
-	chan1_fft = np.abs(chan1_fft_temp[0:chunk]) * 2 / (256 * chunk)
-	chan2_fft = np.abs(chan2_fft_temp[0:chunk]) * 2 / (256 * chunk)
-
-
-# Compute the enery in the fft from each channel
-	chan1_energies = []
-	chan2_energies = []
-
-	for i in range(sources):
-	    chan1_energies.append(0)
-	    chan2_energies.append(0)
-
-	#for i in range(len(chan1_fft)):
-	#	chan1_energy = chan1_energy + chan1_fft[i]*chan1_fft[i]
-	#	chan2_energy = chan2_energy + chan2_fft[i]*chan2_fft[i]
 
 	for i in range(sources):
 	    start = int(i * (chunk / 2) / (sources))
 	    end = int((i + 1) * (chunk / 2) / (sources))
-
-	    #print("Start: ", start)
-	    #print("End:   ", end)
-
-	    for j in range(start, end):
-	        chan1_energies[i] = chan1_energies[i] + chan1_fft[j]*chan1_fft[j]
-	        chan2_energies[i] = chan2_energies[i] + chan2_fft[j]*chan2_fft[j]
-
-	    chan1_energies[i] = chan1_energies[i] / chunk
-	    chan2_energies[i] = chan2_energies[i] / chunk
+        
+        for cNum in range(numChannels):
+            channelEnergy = channelEnergies[cNum]
+            channelFft = fftOfChannels[cNum]
+            for j in range(start, end):
+	            #approximation of energy stored in section fft
+                #ask mert
+                channelEnergy[i] = channelEnergy[i] + channelFft[j]*channelFft[j]
+	
+	        channelEnergy[i] = channelEnergy[i] / chunk
+	
+    return channelEnergies
 
 def updateScreenWithEnergies(chan1_energies, chan2_energies):
     # Get a measure of which channel the audio is coming from. Positive means 1, negative means 2
@@ -127,10 +126,8 @@ if __name__ == "__main__":
 	        # Read the stream data into a variable
 		data = stream.read(chunk, exception_on_overflow=False)
 	    	
-	        chan1_energies = []
-		chan2_energies = []
-	        getChannelEnergies(data, chan1_energies, chan2_energies)
-	        updateScreenWithEnergies(chan1_energies, chan2_energies)
+	        channelEnergies = getChannelEnergies(data)
+	        updateScreenWithEnergies(channelEnergies[0], channelEnergies[1])
 	pygame.quit()
 	
 	#print("finished recording")
