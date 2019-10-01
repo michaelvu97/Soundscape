@@ -27,6 +27,7 @@ BLUE =  (  0,   0, 255)
 GREEN = (  0, 255,   0)
 RED =   (255,   0,   0)
 audio = pyaudio.PyAudio() # create pyaudio instantiation
+audio1 = pyaudio.PyAudio()
 
 # Set the height and width of the screen
 height = 600
