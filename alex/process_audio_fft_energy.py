@@ -4,6 +4,7 @@ import pygame
 import wave
 import struct
 import time
+from draw_arrow import drawArrow
 import numpy as np
 from scipy.fftpack import fft
 
@@ -31,7 +32,7 @@ audio1 = pyaudio.PyAudio()
 
 # Set the height and width of the screen
 height = 600
-width = 1000
+width = 600
 size = [width, height]
 screen = pygame.display.set_mode(size)
  
@@ -117,11 +118,14 @@ while not done:
 		#print()
 
 	#screen.fill(WHITE)
-
-		R = int(255 * i / sources)
-		G = (R + 30) % 256
-		B = (G + 85) % 256
-		pygame.draw.rect(screen, (R, G, B), [horiz, int((height/sources) * i), 50, int(height/sources)])
+		fakeAngle = 10 #degrees
+		radius = int(width/2)
+		# R = int(255 * i / sources)
+		# G = (R + 30) % 256
+		# B = (G + 85) % 256
+		# pygame.draw.rect(screen, (R, G, B), [horiz, int((height/sources) * i), 50, int(height/sources)])
+		pygame.draw.circle(screen, 0, [int(width/2), int(height/2)], int(width/2), 2)
+		drawArrow(screen, fakeAngle)
 	pygame.display.flip()
 
 pygame.quit()

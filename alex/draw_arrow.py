@@ -6,12 +6,10 @@ import pygame
 import math
 
 def drawArrow(screen, theta):
-    print("draw arrow with angle" + theta)
     width = screen.get_width()
-    height = screen.get_height()
-    r = min(width, height)/2;
     xCentre = width/2
-    yCentre = height/2
-    x = xCentre + r*math.cos(theta)
-    y = yCentre + r * math.sin(theta)
+    yCentre = width/2
+    r = width/2
+    x = xCentre + r*math.cos(theta * math.pi / 180)
+    y = yCentre + r * math.sin(-theta * math.pi / 180)
     pygame.draw.line(screen, pygame.Color(0,0,0), (xCentre, yCentre), (x,y)) 
