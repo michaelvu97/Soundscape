@@ -2,13 +2,36 @@ import numpy as np
 import math 
 import time
 
+"""
+delta_x is the total horizontal distance between the mics
+y_offset is the vertical distance from the origin.
+delay_ab is the positive (or negative if flipped) amount of time that microphone
+  R lags behind L.
+  e.g. if the sound source is very close to the left microphone, delay_LR > 0.
+  Note that the sign of this delay is very important.
+
+returns: a paramteric lambda: t -> [x,y]
+"""
+def generate_horizontal(delta_x, y_offset, delay_LR):
+    speed_of_sound_mps = 330.0 # todo the correct value.
+    delay_distance = -1 * speed_of_sound_mps * delay_LR # TODO validate the LR dir
+    a = 0.5 * delay_distance
+
+    # TODO: plus minus
+    b = 0.5 * math.sqrt((delta_x ** 2) - (delay_distance ** 2))
+
+    print("Horizontal generated: a=" + str(a) + ", b = " + str(b))
+    return lambda t: np.array([a * math.cosh(t), b * math.sinh(t) + y_offset])
+
+generate_horizontal(10, 0, 8.27 / 330.0)
+input()
+
 # Hypothesis functions (for testing)
 f = [
     lambda t: np.array([math.cosh(t), math.sinh(t)]),
     lambda t: np.array([math.sinh(t) + 5, math.cosh(t)]),
     lambda t: np.array([-math.cosh(t) + 5.4, math.sinh(t)]),
 ]
-
 
 K = len(f)
 
