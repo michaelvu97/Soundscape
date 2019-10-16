@@ -6,6 +6,21 @@ import matplotlib.pyplot as plt
 speed_of_sound_mps = 330.0 # TODO the correct value.
 
 """
+origin: [x,y] representing the origin of the hyperbola
+dir1: [x, y] representing one of the directions of the hyperbolic asymptote,
+    relative to the origin.
+dir2: [x, y] representing one of the directions of the hyperbolic asymptote,
+    relative to the origin.
+"""
+class HyperbolicAsymptote:
+    def __init__(self, origin, dir1, dir2):
+        self.origin = origin
+        self.dir1 = dir1
+        self.dir2 = dir2
+    def __str__(self):
+        return str(self.origin) + ": " + str(self.dir1) + ", " + str(self.dir2)
+
+"""
 delta_x is the total horizontal distance between the mics
 y_offset is the vertical distance from the origin.
 delay_LR is the positive (or negative if flipped) amount of time that 
@@ -13,23 +28,14 @@ delay_LR is the positive (or negative if flipped) amount of time that
   e.g. if the sound source is very close to the left microphone, delay_LR > 0.
   Note that the sign of this delay is very important.
 
-    returns: (f: t -> [x,y], f': t ->[x',y'])
+    returns: HyperbolicAsymptote
 """
 def generate_horizontal(delta_x, y_offset, delay_LR):
     delay_distance = -1 * speed_of_sound_mps * delay_LR
     a = 0.5 * delay_distance
     b = 0.5 * math.sqrt((delta_x ** 2) - (delay_distance ** 2))
 
-    return (
-        lambda t: np.array([
-            a * math.cosh(t), 
-            b * math.sinh(t) + y_offset
-        ]),
-        lambda t: np.array([
-            a * math.sinh(t),
-            b * math.cosh(t)
-        ])
-    )
+    return HyperbolicAsymptote([0, y_offset], [a, b], [a, -b])
 
 """
 delta_y is the total vertical distance between the mics.
@@ -46,16 +52,7 @@ def generate_vertical(delta_y, x_offset, delay_TD):
     a = 0.5 * delay_distance
     b = 0.5 * math.sqrt((delta_y ** 2) - (delay_distance ** 2))
 
-    return (
-        lambda t: np.array([
-            b * math.sinh(t) + x_offset,
-            a * math.cosh(t)
-        ]),
-        lambda t: np.array([
-            b * math.cosh(t),
-            a * math.sinh(t)
-        ])
-    )
+    return HyperbolicAsymptote([x_offset, 0], [b, a], [-b, a])
 
 """
 Generates a hyperbola rotated 45 degrees from horizontal. Must be centered 
@@ -75,16 +72,13 @@ def generate_diagonal_BL_TR(delta_pos, delay_BL_TR):
 
     # Note that an arbitrary rotation can be achieved by creating a rotation
     # matrix and transforming the horizontal function by that amount.
-    return (
-        lambda t: np.array([
-            rotation_coeff * (a * math.cosh(t) - b * math.sinh(t)),
-            rotation_coeff * (a * math.cosh(t) + b * math.sinh(t))
-        ]),
-        lambda t: np.array([
-            rotation_coeff * (a * math.sinh(t) - b * math.cosh(t)),
-            rotation_coeff * (a * math.sinh(t) + b * math.cosh(t))
-        ])
+    return HyperbolicAsymptote(
+        [0,0],
+        [rotation_coeff * (a - b), rotation_coeff * (a + b)],
+        [rotation_coeff * (a + b), rotation_coeff * (a- b)]
     )
+
+
 
 """
 Generates a hyperbola rotated -45 degrees from horizontal. 
@@ -103,16 +97,10 @@ def generate_diagonal_TL_BR(delta_pos, delay_TL_BR):
     rotation_coeff = 1/math.sqrt(2) # cos 45 = sin 45 = 1 / sqrt 2
     # Note that an arbitrary rotation can be achieved by creating a rotation
     # matrix and transforming the horizontal function by that amount.
-
-    return (
-        lambda t: np.array([
-            rotation_coeff * (a * math.cosh(t) + b * math.sinh(t)),
-            rotation_coeff * (-a * math.cosh(t) + b * math.sinh(t))
-        ]),
-        lambda t: np.array([
-            rotation_coeff * (a * math.sinh(t) + b * math.cosh(t)),
-            rotation_coeff * (-a * math.sinh(t) + b * math.cosh(t))
-        ])
+    return HyperbolicAsymptote(
+        [0,0],
+        [rotation_coeff * (a + b), rotation_coeff * (-a + b)],
+        [rotation_coeff * (a - b), rotation_coeff * (-a - b)]
     )
 
 def SolveEquationsIntersections(functions, granularity = 0.01):
