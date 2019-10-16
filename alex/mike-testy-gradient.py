@@ -115,26 +115,56 @@ def generate_diagonal_TL_BR(delta_pos, delay_TL_BR):
         ])
     )
 
+def SolveEquationsIntersections(functions, granularity = 0.01):
+    K = len(functions)
+    f = [x[0] for x in functions]
+
+    granularity_squared = granularity ** 2
+
+    intersections = []
+
+    t_samples = 5 * np.arcsinh(np.linspace(-3, 3, 500))
+
+    for i in range(K - 1):
+        for j in range(i + 1, K):
+            # Compare function i and j
+
+            # TODO: replace linspace with one that will be approx equidistant
+            # for a hyperbola
+            # TODO: this will limit the range
+            for t_i in t_samples:
+                for t_j in t_samples:
+                    p_i = f[i](t_i)
+                    p_j = f[j](t_j)
+                    
+                    # Use L2 distance
+                    dist_squared = np.mean(np.square(p_i - p_j))
+                    if dist_squared <= granularity_squared:
+                        intersections.append(p_i)
+                        break
+    print(intersections)
+    for intersection in intersections:
+        plt.plot(intersection[0], intersection[1], 'bo')
+    plt.show()
+    # TODO find the closest intersections
+
+
 """
 Solves a system of estimated parametric equations.
 functions: an array of tuples. Each tuple is (f(t), f'(t))
 """
-def SolveEquations(functions, learning_rate = 0.005):
+def SolveEquationsGradientDescent(functions, learning_rate = 0.005):
     
     K = len(functions)
 
-    # Hypothesis functions (for testing)
-    # TODO: replace with the generated lambdas.
+    # Hypothesis functions
     f = [x[0] for x in functions]
 
-    # Hypothesis function derivatives (for testing)
+    # Hypothesis function derivatives
     f_prime = [x[1] for x in functions]
 
     # Parameterizations
-    t = np.array([0, 0, 0])
-
-    # Careful, if this is too big, it will explode.
-    learning_rate = 0.005
+    t = np.zeros(K)
 
     def get_predicted_location():
         return np.mean([f[i](t[i]) for i in range(K)], axis=0)
@@ -151,9 +181,6 @@ def SolveEquations(functions, learning_rate = 0.005):
 
         return err
 
-    # TODO
-    last_error = 1000000000
-    min_error = last_error
     t1 = time.time()
     for i in range (500):
         curr_fprime = [x(t[i]) for i,x in enumerate(f_prime)]
@@ -170,13 +197,44 @@ def SolveEquations(functions, learning_rate = 0.005):
         ])
 
         # Update weights.
-        t = t - learning_rate * gradient;
+        t -= learning_rate * gradient
+        print(get_predicted_location())
 
-        curr_err = get_error(curr_hypotheses)
     t2 = time.time()
 
     print("Predicted location: " + str(get_predicted_location()))
     print("Elapsed time: " + str(t2 - t1) + " seconds")
 
     return get_predicted_location()
+
+# Test where each mic is (1,1), (-1, 1) etc
+# True point is at (4.3, 2.04)
+D = 1
+functions = [
+    generate_horizontal(2, 1, -1.941 / speed_of_sound_mps),
+    generate_vertical(2, 1, 1.0268 / speed_of_sound_mps),
+    generate_diagonal_TL_BR(2 * math.sqrt(2), -0.9142 / speed_of_sound_mps),
+    generate_horizontal(2, -1, -1.623133 / speed_of_sound_mps)
+]
+test_1 = np.array([functions[0][0](x) for x in np.linspace(-3, 3)])
+test_2 = np.array([functions[1][0](x) for x in np.linspace(-3, 3)])
+test_3 = np.array([functions[2][0](x) for x in np.linspace(-3, 3)])
+test_4 = np.array([functions[3][0](x) for x in np.linspace(-3, 3)])
+
+plt.plot(-1, -1, 'r*')
+plt.plot(-1, 1, 'r*')
+plt.plot(1, -1, 'r*')
+plt.plot(1, 1, 'r*')
+
+plt.plot(test_1[:,0], test_1[:,1])
+plt.plot(test_2[:,0], test_2[:,1])
+plt.plot(test_3[:,0], test_3[:,1])
+plt.plot(test_4[:,0], test_4[:,1])
+
+loc = SolveEquationsIntersections(functions, granularity = 0.01)
+
+plt.plot(loc[0], loc[1], 'go')
+
+
+plt.show()
 
