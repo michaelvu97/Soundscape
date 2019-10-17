@@ -1,8 +1,11 @@
 import numpy as np
+import scipy.io.wavfile
 
-a = np.array([1,-3,5,-3,2,0,0,0,0], dtype=float)
-b = np.array([0,1,-3,5,-3,2,0,0,1], dtype=float)
-# b = np.array([3,5,3,2,0,0,1,0,0], dtype=float)
+rate, a = scipy.io.wavfile.read("./clap  mic1.wav")
+rate, b = scipy.io.wavfile.read("./clap  mic2.wav")
+
+a = np.array(a[:1024])
+b = np.array(b[:1024])
 
 noise_magnitude = 0.25
 
@@ -44,4 +47,7 @@ for i in range(-len(a), len(a)):
     print("delay=" + str(i) + ", corr=" + str(corr) + ", energy=" + str(energy))
     energies[i] = energy
 
-print("The time delay to b is " + str(max(energies, key=energies.get)))
+delay_to_b_samples = max(energies, key=energies.get)
+print("The sample delay to b is " + str(delay_to_b_samples) + " (" + str(delay_to_b_samples / rate) + " seconds)")
+
+
