@@ -4,27 +4,12 @@ import scipy.io.wavfile
 
 rate, a = scipy.io.wavfile.read("./clap  mic1.wav")
 rate, b = scipy.io.wavfile.read("./clap  mic2.wav")
-
+a = a.astype(np.float64)
+b = b.astype(np.float64)
 length = rate * 2
 
 a = np.array(a[:length])
 b = np.array(b[:length])
-
-noise_magnitude = 0.25
-
-# Simulate gaussian noise in the micrphone
-noise_a = noise_magnitude * np.random.normal(size=len(a))
-noise_b = noise_magnitude * np.random.normal(size=len(a))
-
-# Simulate attenuation
-b = b * 0.25
-
-# Add noise
-a = a + noise_a
-b = b + noise_b
-
-
-
 
 # Delays 
 def delay(arr, tau):
@@ -47,14 +32,45 @@ energies = {}
 dist_meters = 0.3
 max_delay_seconds = dist_meters / 343
 max_delay_samples =math.ceil(max_delay_seconds * rate)
-delay_range = range(-max_delay_samples, max_delay_samples)
+# delay_range = range(-max_delay_samples, max_delay_samples)
+delay_range = range(-600, 600)
+
+def correlate(a, b, delay_b):
+    N = len(a)
+    N_window = N - abs(delay_b)
+    if N_window <= 0:
+        print("ERR: NEGATIVE N")
+        return 0
+
+    a_start = 0
+    b_start = 0
+    if delay_b < 0:
+        b_start = -delay_b
+    else:
+        a_start = delay_b
+
+    a_end = a_start + N_window
+    b_end = b_start + N_window
+
+    a_window = a[a_start:a_end]
+    b_window = b[b_start:b_end]
+
+    a_window_mean = np.mean(a_window)
+    b_window_mean = np.mean(b_window)
+
+    a_window_centralized = a_window - a_window_mean
+    b_window_centralized = b_window - b_window_mean
+
+    a_window_std_dev = math.sqrt(np.mean(np.square(a_window_centralized)))
+    b_window_std_dev = math.sqrt(np.mean(np.square(b_window_centralized)))
+
+    # Cross correlation of the windows.
+    return np.mean((a_window_centralized) * (b_window_centralized)) / (a_window_std_dev * b_window_std_dev)
 
 for i in delay_range:
-    # print("i:" + str(i) + ", " + str(delay(b,i)))
-    corr = np.correlate(a, delay(b, i), mode='valid')
-    energy = np.sum(corr ** 2)
-    print("delay=" + str(i) + ", corr=" + str(corr) + ", energy=" + str(energy))
-    energies[i] = energy
+    corr = correlate(a, b, i)
+    print("delay=" + str(i) + ", corr=" + str(corr))
+    energies[i] = corr
 
 delay_to_b_samples = max(energies, key=energies.get)
 print("The sample delay to b is " + str(delay_to_b_samples) + "[negative means b lags] (" + str(delay_to_b_samples / rate) + " seconds)")
