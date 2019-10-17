@@ -1,11 +1,14 @@
 import numpy as np
+import math
 import scipy.io.wavfile
 
 rate, a = scipy.io.wavfile.read("./clap  mic1.wav")
 rate, b = scipy.io.wavfile.read("./clap  mic2.wav")
 
-a = np.array(a[:1024])
-b = np.array(b[:1024])
+length = rate * 2
+
+a = np.array(a[:length])
+b = np.array(b[:length])
 
 noise_magnitude = 0.25
 
@@ -40,7 +43,13 @@ def delay(arr, tau):
 
 energies = {}
 
-for i in range(-len(a), len(a)):
+# Computed by determining the max sample time delay between phyiscal microphones
+dist_meters = 0.3
+max_delay_seconds = dist_meters / 343
+max_delay_samples =math.ceil(max_delay_seconds * rate)
+delay_range = range(-max_delay_samples, max_delay_samples)
+
+for i in delay_range:
     # print("i:" + str(i) + ", " + str(delay(b,i)))
     corr = np.correlate(a, delay(b, i), mode='valid')
     energy = np.sum(corr ** 2)
@@ -48,6 +57,6 @@ for i in range(-len(a), len(a)):
     energies[i] = energy
 
 delay_to_b_samples = max(energies, key=energies.get)
-print("The sample delay to b is " + str(delay_to_b_samples) + " (" + str(delay_to_b_samples / rate) + " seconds)")
+print("The sample delay to b is " + str(delay_to_b_samples) + "[negative means b lags] (" + str(delay_to_b_samples / rate) + " seconds)")
 
 
