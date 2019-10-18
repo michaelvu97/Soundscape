@@ -4,10 +4,9 @@ import time
 import matplotlib.pyplot as plt
 
 speed_of_sound_mps = 330.0 # TODO the correct value.
+slice_size = 22.5;
 
 """
-origin: [x,y] representing the origin of the hyperbola
-dir1: [x, y] representing one of the directions of the hyperbolic asymptote,
     relative to the origin.
 dir2: [x, y] representing one of the directions of the hyperbolic asymptote,
     relative to the origin.
@@ -19,7 +18,62 @@ class HyperbolicAsymptote:
         self.dir2 = dir2
     def __str__(self):
         return str(self.origin) + ": " + str(self.dir1) + ", " + str(self.dir2)
+"""
+represents a line (y = mx + b)
+origin: [x,y] representing the origin of the hyperbola
+direction: [x, y] representing one of the directions of the hyperbolic asymptote,
+    relative to the origin.
+"""
+class Line:
+	def __init__(self, origin, direction):
+		self.origin = origin
+		self.x = direction[0]
+		self.y = direction[1]
+		self.slope = direction[1] / direction [0]
+		self.theta = None;
+	def __str__(self):
+		return "theta: " + str(self.theta)  + " section: " + str(self.getDirectionSection()) 
+	
+	#assuming the line intersects the origin even though it doesn't in most cases
+	#returns theta E [0, 2*pi)
+	def getTheta(self):
+		if(self.theta != None):
+			return self.theta;
 
+		theta =  math.atan2(self.y,self.x)
+		if(theta < 0):
+			theta = 2 * math.pi + theta
+		theta = theta * 180 / math.pi
+		self.theta = theta;
+		return theta
+	
+	#Assuming a circling is dividing into 16 equally sized slices, return which slice number this line belongs to
+	#returns [0, 15]
+	def getDirectionSection(self):
+		theta = self.getTheta()
+		return math.floor(theta /slice_size)
+	
+'''
+returns theta between [-pi, pi] given the x and y of a triangle
+'''
+def atan2(x,y):
+	theta = 0;
+	if(x == 0):
+		if(y == 0):
+			raise Exception("direction of line is 0,0")
+		elif(y > 0):
+			theta = math.pi/2;
+		else:
+			theta = -math.pi/2;
+	elif(x > 0):
+		theta = np.arctan(y/x);
+	elif(x < 0):
+		if(y <0):
+			theta = np.arctan(y/x) - math.pi
+		else:
+			theta = np.arctan(y/x) +  math.pi
+
+	return theta
 """
 delta_x is the total horizontal distance between the mics
 y_offset is the vertical distance from the origin.
@@ -195,34 +249,52 @@ def SolveEquationsGradientDescent(functions, learning_rate = 0.005):
 
     return get_predicted_location()
 
-# Test where each mic is (1,1), (-1, 1) etc
-# True point is at (4.3, 2.04)
-D = 1
-functions = [
-    generate_horizontal(2, 1, -1.941 / speed_of_sound_mps),
-    generate_vertical(2, 1, 1.0268 / speed_of_sound_mps),
-    generate_diagonal_TL_BR(2 * math.sqrt(2), -0.9142 / speed_of_sound_mps),
-    generate_horizontal(2, -1, -1.623133 / speed_of_sound_mps)
-]
-test_1 = np.array([functions[0][0](x) for x in np.linspace(-3, 3)])
-test_2 = np.array([functions[1][0](x) for x in np.linspace(-3, 3)])
-test_3 = np.array([functions[2][0](x) for x in np.linspace(-3, 3)])
-test_4 = np.array([functions[3][0](x) for x in np.linspace(-3, 3)])
-
-plt.plot(-1, -1, 'r*')
-plt.plot(-1, 1, 'r*')
-plt.plot(1, -1, 'r*')
-plt.plot(1, 1, 'r*')
-
-plt.plot(test_1[:,0], test_1[:,1])
-plt.plot(test_2[:,0], test_2[:,1])
-plt.plot(test_3[:,0], test_3[:,1])
-plt.plot(test_4[:,0], test_4[:,1])
-
-loc = SolveEquationsIntersections(functions, granularity = 0.01)
-
-plt.plot(loc[0], loc[1], 'go')
 
 
-plt.show()
+
+def addToSectionMap(sectionMap, origin, direction):
+	line = Line(origin, direction)
+	theta = line.getTheta()
+	print(line)
+	section = line.getDirectionSection()
+	if((section in sectionMap) == False):
+		sectionMap[section] = []
+	sectionMap[section].append(line)
+
+
+def getDirectionGivenAsymptotes(asymptotes):
+	sectionMap = {}	
+	for asymptote in asymptotes:
+		addToSectionMap(sectionMap, asymptote.origin, asymptote.dir1)	
+		addToSectionMap(sectionMap, asymptote.origin, asymptote.dir2)	
+	
+	
+	mostLines = 0;
+	lineArr = [];
+	for lines in sectionMap.values():
+		numLines = len(lines)
+		if(numLines > mostLines):
+			mostLines = numLines;
+			lineArr = lines
+	
+	averageTheta = 0; 
+	
+	for line in lineArr:
+		averageTheta += line.getTheta();
+	
+	averageTheta = averageTheta / mostLines;
+	print("average angle of lines in the section with the most lines (" + str(mostLines) + ") is " + str(averageTheta))
+
+if __name__ =="__main__":
+	# Test where each mic is (1,1), (-1, 1) etc
+	# True point is at (4.3, 2.04)
+	D = 1
+	asymptotes = [
+	    generate_horizontal(2, 1, -1.941 / speed_of_sound_mps),
+	    generate_vertical(2, 1, 1.0268 / speed_of_sound_mps),
+	    generate_diagonal_TL_BR(2 * math.sqrt(2), -0.9142 / speed_of_sound_mps),
+	    generate_horizontal(2, -1, -1.623133 / speed_of_sound_mps)
+	]
+	
+	getDirectionGivenAsymptotes(asymptotes)
 
