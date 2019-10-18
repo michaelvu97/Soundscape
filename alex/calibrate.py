@@ -8,7 +8,7 @@ import numpy as np
 
 # sampleEnergies: an array of microphone energies <n x 1>
 # sampleDistances: an array representing the distance from the source for each microphone <n x 1>
-getCalibrationFactors(sampleEnergies, sampleDistances):
+def getCalibrationFactors(sampleEnergies, sampleDistances):
 	numEnergies = len(sampleEnergies)
 	numDistances = len(sampleDistances)
 	powers = {}
