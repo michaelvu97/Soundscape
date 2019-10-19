@@ -25,55 +25,54 @@ direction: [x, y] representing one of the directions of the hyperbolic asymptote
     relative to the origin.
 """
 class Line:
-	def __init__(self, origin, direction):
-		self.origin = origin
-		self.x = direction[0]
-		self.y = direction[1]
-		self.slope = direction[1] / direction [0]
-		self.theta = None;
-	def __str__(self):
-		return "theta: " + str(self.theta)  + " section: " + str(self.getDirectionSection()) 
-	
-	#assuming the line intersects the origin even though it doesn't in most cases
-	#returns theta E [0, 2*pi)
-	def getTheta(self):
-		if(self.theta != None):
-			return self.theta;
+    def __init__(self, origin, direction):
+        self.origin = origin
+        self.x = direction[0]
+        self.y = direction[1]
+        self.theta = None;
+    def __str__(self):
+        return "theta: " + str(self.theta)  + " section: " + str(self.getDirectionSection()) 
+    
+    #assuming the line intersects the origin even though it doesn't in most cases
+    #returns theta E [0, 2*pi)
+    def getTheta(self):
+        if(self.theta != None):
+            return self.theta;
 
-		theta =  math.atan2(self.y,self.x)
-		if(theta < 0):
-			theta = 2 * math.pi + theta
-		theta = theta * 180 / math.pi
-		self.theta = theta;
-		return theta
-	
-	#Assuming a circling is dividing into 16 equally sized slices, return which slice number this line belongs to
-	#returns [0, 15]
-	def getDirectionSection(self):
-		theta = self.getTheta()
-		return math.floor(theta /slice_size)
-	
+        theta =  math.atan2(self.y,self.x)
+        if(theta < 0):
+            theta = 2 * math.pi + theta
+        theta = theta * 180 / math.pi
+        self.theta = theta;
+        return theta
+    
+    #Assuming a circling is dividing into 16 equally sized slices, return which slice number this line belongs to
+    #returns [0, 15]
+    def getDirectionSection(self):
+        theta = self.getTheta()
+        return math.floor(theta /slice_size)
+    
 '''
 returns theta between [-pi, pi] given the x and y of a triangle
 '''
 def atan2(x,y):
-	theta = 0;
-	if(x == 0):
-		if(y == 0):
-			raise Exception("direction of line is 0,0")
-		elif(y > 0):
-			theta = math.pi/2;
-		else:
-			theta = -math.pi/2;
-	elif(x > 0):
-		theta = np.arctan(y/x);
-	elif(x < 0):
-		if(y <0):
-			theta = np.arctan(y/x) - math.pi
-		else:
-			theta = np.arctan(y/x) +  math.pi
+    theta = 0;
+    if(x == 0):
+        if(y == 0):
+            raise Exception("direction of line is 0,0")
+        elif(y > 0):
+            theta = math.pi/2;
+        else:
+            theta = -math.pi/2;
+    elif(x > 0):
+        theta = np.arctan(y/x);
+    elif(x < 0):
+        if(y <0):
+            theta = np.arctan(y/x) - math.pi
+        else:
+            theta = np.arctan(y/x) +  math.pi
 
-	return theta
+    return theta
 """
 delta_x is the total horizontal distance between the mics
 y_offset is the vertical distance from the origin.
@@ -87,7 +86,7 @@ delay_LR is the positive (or negative if flipped) amount of time that
 def generate_horizontal(delta_x, y_offset, delay_LR):
     delay_distance = -1 * speed_of_sound_mps * delay_LR
     a = 0.5 * delay_distance
-    b = 0.5 * math.sqrt((delta_x ** 2) - (delay_distance ** 2))
+    b = 0.5 * math.sqrt(max(0, (delta_x ** 2) - (delay_distance ** 2)))
 
     return HyperbolicAsymptote([0, y_offset], [a, b], [a, -b])
 
@@ -104,7 +103,7 @@ delay_TB is the positive (or negative if flipped) amount of time that
 def generate_vertical(delta_y, x_offset, delay_TD):
     delay_distance = speed_of_sound_mps * delay_TD
     a = 0.5 * delay_distance
-    b = 0.5 * math.sqrt((delta_y ** 2) - (delay_distance ** 2))
+    b = 0.5 * math.sqrt(max(0, (delta_y ** 2) - (delay_distance ** 2)))
 
     return HyperbolicAsymptote([x_offset, 0], [b, a], [-b, a])
 
@@ -120,7 +119,7 @@ delay_BL_TR is the amount of time that microphone TR (top right) lags behind
 def generate_diagonal_BL_TR(delta_pos, delay_BL_TR):
     delay_distance = -1 * speed_of_sound_mps * delay_BL_TR
     a = 0.5 * delay_distance
-    b = 0.5 * math.sqrt((delta_pos ** 2) - (delay_distance ** 2))
+    b = 0.5 * math.sqrt(max(0, (delta_pos ** 2) - (delay_distance ** 2)))
 
     rotation_coeff = 1/math.sqrt(2) # cos 45 = sin 45 = 1 / sqrt 2
 
@@ -146,7 +145,7 @@ delay_TL_BR is the amount of time that microphone BR (bottom right) lags behind
 def generate_diagonal_TL_BR(delta_pos, delay_TL_BR):
     delay_distance = -1 * speed_of_sound_mps * delay_TL_BR
     a = 0.5 * delay_distance
-    b = 0.5 * math.sqrt((delta_pos ** 2) - (delay_distance ** 2))
+    b = 0.5 * math.sqrt(max(0, (delta_pos ** 2) - (delay_distance ** 2)))
 
     rotation_coeff = 1/math.sqrt(2) # cos 45 = sin 45 = 1 / sqrt 2
     # Note that an arbitrary rotation can be achieved by creating a rotation
@@ -253,48 +252,94 @@ def SolveEquationsGradientDescent(functions, learning_rate = 0.005):
 
 
 def addToSectionMap(sectionMap, origin, direction):
-	line = Line(origin, direction)
-	theta = line.getTheta()
-	print(line)
-	section = line.getDirectionSection()
-	if((section in sectionMap) == False):
-		sectionMap[section] = []
-	sectionMap[section].append(line)
+    line = Line(origin, direction)
+    theta = line.getTheta()
+    print(line)
+    section = line.getDirectionSection()
+    if((section in sectionMap) == False):
+        sectionMap[section] = []
+    sectionMap[section].append(line)
 
 
 def getDirectionGivenAsymptotes(asymptotes):
-	sectionMap = {}	
-	for asymptote in asymptotes:
-		addToSectionMap(sectionMap, asymptote.origin, asymptote.dir1)	
-		addToSectionMap(sectionMap, asymptote.origin, asymptote.dir2)	
-	
-	
-	mostLines = 0;
-	lineArr = [];
-	for lines in sectionMap.values():
-		numLines = len(lines)
-		if(numLines > mostLines):
-			mostLines = numLines;
-			lineArr = lines
-	
-	averageTheta = 0; 
-	
-	for line in lineArr:
-		averageTheta += line.getTheta();
-	
-	averageTheta = averageTheta / mostLines;
-	print("average angle of lines in the section with the most lines (" + str(mostLines) + ") is " + str(averageTheta))
+    sectionMap = {} 
+    for asymptote in asymptotes:
+        addToSectionMap(sectionMap, asymptote.origin, asymptote.dir1)   
+        addToSectionMap(sectionMap, asymptote.origin, asymptote.dir2)   
+    
+    
+    mostLines = 0;
+    lineArr = [];
+    for lines in sectionMap.values():
+        numLines = len(lines)
+        if(numLines > mostLines):
+            mostLines = numLines;
+            lineArr = lines
+    
+    averageTheta = 0; 
+    
+    for line in lineArr:
+        averageTheta += line.getTheta();
+    
+    averageTheta = averageTheta / mostLines;
+    print("average angle of lines in the section with the most lines (" + str(mostLines) + ") is " + str(averageTheta))
+
+def normalize(vec):
+    length = math.sqrt(vec[0] ** 2 + vec[1] ** 2)
+    return [vec[0] / length, vec[1] / length]
+
+def getDirectionGivenAsymptotesNew(asymptotes):
+    tolerance_degrees = 10
+
+    normalized_vectors_temp = [[normalize(a.dir1), normalize(a.dir2)] for a in asymptotes]
+    normalized_vectors = []
+    for v in normalized_vectors_temp:
+        normalized_vectors.append(v[0])
+        normalized_vectors.append(v[1])
+
+    # Cluster points
+    angle_tolerance_rads = math.radians(22.5)
+    cluster_tolerance_dist_squared = 2 * (1 - math.cos(angle_tolerance_rads))
+
+    print("tolerance: " + str(cluster_tolerance_dist_squared))
+    clusters = [] # form: (average point, num_points)
+    for p in normalized_vectors:
+        cluster_found = False
+        for cluster in clusters:
+            cluster_av = cluster[0]
+            if (((p[0] - cluster_av[0]) **2) + ((p[1] - cluster_av[1]) ** 2) <= cluster_tolerance_dist_squared):
+                cluster_found = True
+                cluster[1] += 1
+                # Update average
+                cluster[0] = [(p[0] + cluster_av[0]) / (cluster[1]), (p[1] + cluster_av[1]) / (cluster[1])]
+                break
+        if not cluster_found:
+            clusters.append([p, 1])
+
+    m_val = 0
+    m_dir = clusters[0][0]
+    for c in clusters:
+        if c[1] > m_val:
+            m_dir = c[0]
+            m_val = c[1]
+
+    # Convert the average direction to an angle
+    theta_rads = math.atan2(m_dir[1], m_dir[0])
+    if (theta_rads < 0):
+        theta_rads += math.radians(360)
+
+    return math.degrees(theta_rads)
 
 if __name__ =="__main__":
-	# Test where each mic is (1,1), (-1, 1) etc
-	# True point is at (4.3, 2.04)
-	D = 1
-	asymptotes = [
-	    generate_horizontal(2, 1, -1.941 / speed_of_sound_mps),
-	    generate_vertical(2, 1, 1.0268 / speed_of_sound_mps),
-	    generate_diagonal_TL_BR(2 * math.sqrt(2), -0.9142 / speed_of_sound_mps),
-	    generate_horizontal(2, -1, -1.623133 / speed_of_sound_mps)
-	]
-	
-	getDirectionGivenAsymptotes(asymptotes)
+    # Test where each mic is (1,1), (-1, 1) etc
+    # True point is at (4.3, 2.04)
+    D = 1
+    asymptotes = [
+        generate_horizontal(2, 1, -1.941 / speed_of_sound_mps),
+        generate_vertical(2, 1, 1.0268 / speed_of_sound_mps),
+        generate_diagonal_TL_BR(2 * math.sqrt(2), -0.9142 / speed_of_sound_mps),
+        generate_horizontal(2, -1, -1.623133 / speed_of_sound_mps)
+    ]
+    
+    getDirectionGivenAsymptotes(asymptotes)
 
