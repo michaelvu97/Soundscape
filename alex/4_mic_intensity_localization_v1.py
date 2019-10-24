@@ -9,7 +9,7 @@ import time
 import math
 from draw_arrow import drawArrow, drawArrowNone, drawMicLevels
 from scipy.fftpack import fft
-from get_device_indices import get_device_indices
+from utils import get_device_indices
 
 def set_device_indices():
     indices = get_device_indices();
