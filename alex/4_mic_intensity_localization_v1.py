@@ -9,6 +9,17 @@ import time
 import math
 from draw_arrow import drawArrow, drawArrowNone, drawMicLevels
 from scipy.fftpack import fft
+from utils import get_device_indices
+
+def set_device_indices():
+    indices = get_device_indices();
+    
+    #microphones are in pairs like this
+    dev1_index = indices[0];
+    dev4_index = indices[1];
+    
+    dev2_index = indices[2]
+    dev3_index = indices[3]
 
 def get_colour_of_frequency(frequency):
     return (0, 0, 0)
@@ -45,10 +56,10 @@ chans = 1 # 1 channel
 samp_rate = 44100 # 44.1kHz sampling rate
 chunk = 16384 # 2^12 samples for buffer
 record_secs = 10 # seconds to record
-dev1_index = 4 # device index found by p.get_device_info_by_index(ii)
-dev2_index = 6 # device index found by p.get_device_info_by_index(ii)
-dev3_index = 7 # device index found by p.get_device_info_by_index(ii)
-dev4_index = 5 # device index found by p.get_device_info_by_index(ii)
+dev1_index = 2 # device index found by p.get_device_info_by_index(ii)
+dev2_index = 4 # device index found by p.get_device_info_by_index(ii)
+dev3_index = 5 # device index found by p.get_device_info_by_index(ii)
+dev4_index = 3 # device index found by p.get_device_info_by_index(ii)
 wav_output_filename1 = 'test1.wav' # name of .wav file
 wav_output_filename2 = 'test2.wav' # name of .wav file
 frequencies = []
@@ -68,6 +79,7 @@ GREEN = (  0, 255,   0)
 RED =   (255,   0,   0)
 
 
+set_device_indices()
 audio = pyaudio.PyAudio() # create pyaudio instantiation
 
 size = [width, height]
