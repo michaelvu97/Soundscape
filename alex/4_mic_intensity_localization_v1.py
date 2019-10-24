@@ -79,6 +79,7 @@ GREEN = (  0, 255,   0)
 RED =   (255,   0,   0)
 
 
+set_device_indices()
 audio = pyaudio.PyAudio() # create pyaudio instantiation
 
 size = [width, height]
