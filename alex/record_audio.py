@@ -5,10 +5,11 @@ import wave
 form_1 = pyaudio.paInt16 # 16-bit resolution
 chans = 1 # 1 channel
 samp_rate = 44100 # 44.1kHz sampling rate
-chunk = 4096 # 2^12 samples for buffer
+chunk = 4000 # 2^12 samples for buffer
+sample_num = 4
 record_secs = 10 # seconds to record
 dev_index = 3 # device index found by p.get_device_info_by_index(ii)
-wav_output_filename = 'test3.wav' # name of .wav file
+wav_output_filename = 'test_small_chunk.wav' # name of .wav file
 
 audio = pyaudio.PyAudio() # create pyaudio instantiation
 
@@ -19,10 +20,13 @@ stream = audio.open(format = form_1,rate = samp_rate,channels = chans, \
 print("recording")
 frames = []
 
+iterations = int(chunk / sample_num)
+
 # loop through stream and append audio chunks to frame array
 for ii in range(0,int((samp_rate/chunk)*record_secs)):
-    data = stream.read(chunk)
-    frames.append(data)
+    for j in range(iterations):
+        data = stream.read(sample_num)
+        frames.append(data)
 
 print("finished recording")
 

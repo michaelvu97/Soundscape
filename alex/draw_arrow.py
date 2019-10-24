@@ -6,8 +6,7 @@ import pygame
 import math
 
 def drawArrowNone(screen):
-    dim = min(screen.get_width(), screen.get_height())
-    
+    dim = 200 
     pygame.draw.rect(screen, pygame.Color(255, 255, 255), [0, 0, dim, dim]) 
     pygame.draw.circle(screen, 0, (int(dim/2), int(dim/2)), int(dim/ 2), 4)
 
@@ -30,11 +29,8 @@ def drawMicLevels(screen, levels):
     rect_x_start = 200
     rect_y_start = 0
 
-    level_min = 0
-    level_max = 10
-
-    for i in range(levels):
+    for i in range(len(levels)):
         x_start = rect_x_start + (i * rect_width)
-        level_height = (levels[i] - level_max) * rect_height / (level_max - level_min)
+        level_height = math.sqrt(levels[i]) * rect_height;
         pygame.draw.rect(screen, pygame.Color(0, 0, 0), [x_start, rect_y_start, rect_width, rect_height])
-        pygame.draw.rect(screen, pygame.Color(255, 0, 0), [x_start, rect_y_start + (rect_height - level_height), rect_width, rect_height])
+        pygame.draw.rect(screen, pygame.Color(255, 0, 0), [x_start, rect_y_start, rect_width, level_height])
