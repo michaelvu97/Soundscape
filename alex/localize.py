@@ -18,6 +18,92 @@ class HyperbolicAsymptote:
         self.dir2 = dir2
     def __str__(self):
         return str(self.origin) + ": " + str(self.dir1) + ", " + str(self.dir2)
+    """
+    delta_x is the total horizontal distance between the mics
+    y_offset is the vertical distance from the origin.
+    delay_LR is the positive (or negative if flipped) amount of time that 
+      microphone R lags behind L.
+      e.g. if the sound source is very close to the left microphone, delay_LR > 0.
+      Note that the sign of this delay is very important.
+
+        returns: HyperbolicAsymptote
+    """
+    @staticmethod
+    def generate_horizontal(delta_x, y_offset, delay_LR):
+        delay_distance = -1 * speed_of_sound_mps * delay_LR
+        a = 0.5 * delay_distance
+        b = 0.5 * math.sqrt(max(0, (delta_x ** 2) - (delay_distance ** 2)))
+
+        return HyperbolicAsymptote([0, y_offset], [a, b], [a, -b])
+
+    """
+    delta_y is the total vertical distance between the mics.
+    x_offset is the horizontal distance from the origin.
+    delay_TB is the positive (or negative if flipped) amount of time that
+      microphone B (botom) lags behind T (top).
+      e.g. if the sound souce is very close to the top microphone, delay_TD > 0.
+      Note that the sign of the delay is very important.
+
+      returns: (f: t -> [x,y], f': t ->[x',y'])
+    """
+    @staticmethod
+    def generate_vertical(delta_y, x_offset, delay_TD):
+        delay_distance = speed_of_sound_mps * delay_TD
+        a = 0.5 * delay_distance
+        b = 0.5 * math.sqrt(max(0, (delta_y ** 2) - (delay_distance ** 2)))
+
+        return HyperbolicAsymptote([x_offset, 0], [b, a], [-b, a])
+
+    """
+    Generates a hyperbola rotated 45 degrees from horizontal. Must be centered 
+       about the origin.
+    delta_pos is the distance between the two microphones.
+    delay_BL_TR is the amount of time that microphone TR (top right) lags behind
+      BL (bottom_left). If the sound source is closer to BL, then delay_BL_TR > 0.
+
+      returns: (f: t -> [x,y], f': t ->[x',y'])
+    """
+    @staticmethod
+    def generate_diagonal_BL_TR(delta_pos, delay_BL_TR):
+        delay_distance = -1 * speed_of_sound_mps * delay_BL_TR
+        a = 0.5 * delay_distance
+        b = 0.5 * math.sqrt(max(0, (delta_pos ** 2) - (delay_distance ** 2)))
+
+        rotation_coeff = 1/math.sqrt(2) # cos 45 = sin 45 = 1 / sqrt 2
+
+        # Note that an arbitrary rotation can be achieved by creating a rotation
+        # matrix and transforming the horizontal function by that amount.
+        return HyperbolicAsymptote(
+            [0,0],
+            [rotation_coeff * (a - b), rotation_coeff * (a + b)],
+            [rotation_coeff * (a + b), rotation_coeff * (a- b)]
+        )
+
+
+
+    """
+    Generates a hyperbola rotated -45 degrees from horizontal. 
+      Must be centered about the origin.
+    delta_pos is the distance between the two microphones.
+    delay_TL_BR is the amount of time that microphone BR (bottom right) lags behind
+      TL (top left). If the sound source is closer to TL, then delay_BL_TR > 0.
+
+      returns: (f: t -> [x,y], f': t ->[x',y'])
+    """
+    @staticmethod
+    def generate_diagonal_TL_BR(delta_pos, delay_TL_BR):
+        delay_distance = -1 * speed_of_sound_mps * delay_TL_BR
+        a = 0.5 * delay_distance
+        b = 0.5 * math.sqrt(max(0, (delta_pos ** 2) - (delay_distance ** 2)))
+
+        rotation_coeff = 1/math.sqrt(2) # cos 45 = sin 45 = 1 / sqrt 2
+        # Note that an arbitrary rotation can be achieved by creating a rotation
+        # matrix and transforming the horizontal function by that amount.
+        return HyperbolicAsymptote(
+            [0,0],
+            [rotation_coeff * (a + b), rotation_coeff * (-a + b)],
+            [rotation_coeff * (a - b), rotation_coeff * (-a - b)]
+        )
 """
 represents a line (y = mx + b)
 origin: [x,y] representing the origin of the hyperbola
@@ -73,88 +159,7 @@ def atan2(x,y):
             theta = np.arctan(y/x) +  math.pi
 
     return theta
-"""
-delta_x is the total horizontal distance between the mics
-y_offset is the vertical distance from the origin.
-delay_LR is the positive (or negative if flipped) amount of time that 
-  microphone R lags behind L.
-  e.g. if the sound source is very close to the left microphone, delay_LR > 0.
-  Note that the sign of this delay is very important.
 
-    returns: HyperbolicAsymptote
-"""
-def generate_horizontal(delta_x, y_offset, delay_LR):
-    delay_distance = -1 * speed_of_sound_mps * delay_LR
-    a = 0.5 * delay_distance
-    b = 0.5 * math.sqrt(max(0, (delta_x ** 2) - (delay_distance ** 2)))
-
-    return HyperbolicAsymptote([0, y_offset], [a, b], [a, -b])
-
-"""
-delta_y is the total vertical distance between the mics.
-x_offset is the horizontal distance from the origin.
-delay_TB is the positive (or negative if flipped) amount of time that
-  microphone B (botom) lags behind T (top).
-  e.g. if the sound souce is very close to the top microphone, delay_TD > 0.
-  Note that the sign of the delay is very important.
-
-  returns: (f: t -> [x,y], f': t ->[x',y'])
-"""
-def generate_vertical(delta_y, x_offset, delay_TD):
-    delay_distance = speed_of_sound_mps * delay_TD
-    a = 0.5 * delay_distance
-    b = 0.5 * math.sqrt(max(0, (delta_y ** 2) - (delay_distance ** 2)))
-
-    return HyperbolicAsymptote([x_offset, 0], [b, a], [-b, a])
-
-"""
-Generates a hyperbola rotated 45 degrees from horizontal. Must be centered 
-   about the origin.
-delta_pos is the distance between the two microphones.
-delay_BL_TR is the amount of time that microphone TR (top right) lags behind
-  BL (bottom_left). If the sound source is closer to BL, then delay_BL_TR > 0.
-
-  returns: (f: t -> [x,y], f': t ->[x',y'])
-"""
-def generate_diagonal_BL_TR(delta_pos, delay_BL_TR):
-    delay_distance = -1 * speed_of_sound_mps * delay_BL_TR
-    a = 0.5 * delay_distance
-    b = 0.5 * math.sqrt(max(0, (delta_pos ** 2) - (delay_distance ** 2)))
-
-    rotation_coeff = 1/math.sqrt(2) # cos 45 = sin 45 = 1 / sqrt 2
-
-    # Note that an arbitrary rotation can be achieved by creating a rotation
-    # matrix and transforming the horizontal function by that amount.
-    return HyperbolicAsymptote(
-        [0,0],
-        [rotation_coeff * (a - b), rotation_coeff * (a + b)],
-        [rotation_coeff * (a + b), rotation_coeff * (a- b)]
-    )
-
-
-
-"""
-Generates a hyperbola rotated -45 degrees from horizontal. 
-  Must be centered about the origin.
-delta_pos is the distance between the two microphones.
-delay_TL_BR is the amount of time that microphone BR (bottom right) lags behind
-  TL (top left). If the sound source is closer to TL, then delay_BL_TR > 0.
-
-  returns: (f: t -> [x,y], f': t ->[x',y'])
-"""
-def generate_diagonal_TL_BR(delta_pos, delay_TL_BR):
-    delay_distance = -1 * speed_of_sound_mps * delay_TL_BR
-    a = 0.5 * delay_distance
-    b = 0.5 * math.sqrt(max(0, (delta_pos ** 2) - (delay_distance ** 2)))
-
-    rotation_coeff = 1/math.sqrt(2) # cos 45 = sin 45 = 1 / sqrt 2
-    # Note that an arbitrary rotation can be achieved by creating a rotation
-    # matrix and transforming the horizontal function by that amount.
-    return HyperbolicAsymptote(
-        [0,0],
-        [rotation_coeff * (a + b), rotation_coeff * (-a + b)],
-        [rotation_coeff * (a - b), rotation_coeff * (-a - b)]
-    )
 
 def SolveEquationsIntersections(functions, granularity = 0.01):
     K = len(functions)
@@ -298,10 +303,9 @@ def getDirectionGivenAsymptotesNew(asymptotes):
         normalized_vectors.append(v[1])
 
     # Cluster points
-    angle_tolerance_rads = math.radians(22.5)
+    angle_tolerance_rads = math.radians(30)
     cluster_tolerance_dist_squared = 2 * (1 - math.cos(angle_tolerance_rads))
 
-    print("tolerance: " + str(cluster_tolerance_dist_squared))
     clusters = [] # form: (average point, num_points)
     for p in normalized_vectors:
         cluster_found = False
