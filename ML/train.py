@@ -1,33 +1,33 @@
 import numpy as np
 import tensorflow as tf
 import scipy.io.wavfile
+import scipy.misc
 import math
 import matplotlib.pyplot as plt
 
-rate, sample1 = scipy.io.wavfile.read("sample-000011.wav")
+rate, sample1 = scipy.io.wavfile.read("sample-000000.wav")
 sample1 = sample1.astype(np.float32)
 
 def generatesine(sample_period, length):
     return np.array([math.sin(float(x) * 2 * 3.14 / sample_period) for x in range(length)])
 
 
-def spectro(x):
-    plt.imshow(np.transpose(x))
-    plt.colorbar()
-    plt.show()
+def spectro(x, name):
+    # plt.imshow(np.transpose(x))
+    # plt.colorbar()
+    # plt.show()
+    scipy.misc.imsave(name, x)
 
 sample_with_noise = sample1 \
-    + 2000.0 * generatesine(rate / 440, sample1.shape[0]) \
-    + np.random.normal(0, 1000, size=(sample1.shape[0])).astype(np.float32)
+    + 2000.0 * generatesine(rate / (3*440), sample1.shape[0]) #\
+    # + np.random.normal(0, 1000, size=(sample1.shape[0])).astype(np.float32)
 scipy.io.wavfile.write("TEST_INPUT_WITH_NOISE.wav", rate, sample_with_noise.astype(np.int16))
 
-window_size_seconds = 0.1
+window_size_seconds = 0.05
 window_size_samples = int(window_size_seconds * rate)
 frame_step = int(window_size_samples / 4)
 
-
-
-MODEL_INPUT_TIME_SECONDS = 0.5 # 0.1 second sample
+MODEL_INPUT_TIME_SECONDS = 0.2 # 0.1 second sample
 MODEL_INPUT_TIME_SAMPLES = int(MODEL_INPUT_TIME_SECONDS * rate)
 
 input_dims = [
@@ -62,17 +62,22 @@ hidden = tf.keras.layers.MaxPooling2D(pool_size=3)(hidden)
 hidden = tf.keras.layers.Flatten()(hidden)
 hidden = tf.keras.layers.Dense(100, activation="relu")(hidden)
 # hidden = tf.keras.layers.Dropout(0.25)(hidden)
-y_hat = tf.keras.layers.Dense(num_frequencies * num_stft_windows, activation="sigmoid")(hidden)
+y_hat = tf.keras.layers.Dense(num_frequencies * num_stft_windows, activation="linear")(hidden)
 
-y_hat_mask = tf.cast(y_hat, tf.complex64)
-result_masked = tf.multiply(x_freq_flattened, y_hat_mask)
+confidence = tf.constant(0.5, tf.float32)
 
-result_masked_unflattened = tf.reshape(result_masked, [-1, num_stft_windows, num_frequencies])
-reconstructed = tf.contrib.signal.inverse_stft(result_masked_unflattened, window_size_samples, frame_step)
+result_masked_limited = tf.multiply(x_freq_flattened, tf.cast(tf.greater(y_hat, confidence), tf.complex64))
 
-err = tf.reduce_mean(tf.square(tf.abs(result_masked_unflattened) - tf.abs(y_true_freq_domain)))
+result_masked_limited_unflattened = tf.reshape(result_masked_limited, [-1, num_stft_windows, num_frequencies])
+reconstructed = tf.contrib.signal.inverse_stft(result_masked_limited_unflattened, window_size_samples, frame_step)
 
-optimizer = tf.train.AdamOptimizer(learning_rate=0.1).minimize(err)
+# This will have to be automated using SNR or SAR or something.
+y_signal_binary_threshold = tf.constant(20000, tf.float32)
+y_ideal_binary_mask = tf.cast(tf.greater(tf.abs(y_true_freq_domain), y_signal_binary_threshold), tf.float32)
+
+err = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(logits=tf.reshape(y_hat, [-1, 1]), labels=tf.reshape(y_ideal_binary_mask, [-1, 1])))
+
+optimizer = tf.train.AdamOptimizer(learning_rate=0.001).minimize(err)
 
 def SplitIntoNSizedWindows(arr, n):
     clip_length = len(arr) % n
@@ -91,12 +96,19 @@ data_dict = {
     x_time_domain: SplitIntoNSizedWindows(sample_with_noise, MODEL_INPUT_TIME_SAMPLES)
 }
 
+r = sess.run(y_ideal_binary_mask, feed_dict=data_dict)
+spectro(np.reshape(r, [-1, num_frequencies]), "ideal_mask.png")
+print("spectro'd")
+
 errs = []
 
-for i in range(100):
+for i in range(30):
     sess.run(optimizer, feed_dict=data_dict)
-    errs.append(sess.run(err, feed_dict=data_dict))
-    print(str(i) +": " + str(errs[-1]))
+    e = sess.run(err, feed_dict=data_dict)
+    errs.append(e)
+    curr_mask = sess.run(tf.cast(tf.greater(y_hat, confidence), tf.int16), feed_dict=data_dict)
+    spectro(np.reshape(curr_mask, [-1, num_frequencies]), "./test_masks/" + str(i) + ".png")
+    print(str(i) +": " + str(e))
 
 # Generate some test audio?
 test = sess.run(reconstructed, feed_dict=data_dict)
@@ -104,8 +116,9 @@ test = sess.run(reconstructed, feed_dict=data_dict)
 # Energy
 scipy.io.wavfile.write("TEST.wav", rate, test.flatten().astype(np.int16))
 
-# spec = sess.run(tf.abs(y_hat_mask), feed_dict=data_dict)
-# spectro(spec.reshape(-1, spec.shape[-1]))
+spectro(np.reshape(sess.run(tf.abs(result_masked_limited), feed_dict=data_dict), [-1, num_frequencies]), "result_masked.png")
+spectro(np.reshape(sess.run(tf.cast(tf.greater(y_hat, confidence), tf.int16), feed_dict=data_dict),[-1, num_frequencies]), "result_mask.png")
+spectro(np.reshape(sess.run(tf.abs(x_freq_flattened), feed_dict=data_dict),[-1, num_frequencies]), "input.png")
 
 # plt.plot(errs)
 # plt.show()
