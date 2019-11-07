@@ -49,19 +49,19 @@ x_freq_flattened = tf.reshape(x_freq_domain, [-1, num_frequencies * num_stft_win
 # Network
 x_freq_domain_to_real = tf.expand_dims(tf.abs(x_freq_domain), 3)
 
-hidden = tf.keras.layers.Conv2D(64, kernel_size=4, padding="same", activation='relu', input_shape=(num_stft_windows, num_frequencies, 1))(x_freq_domain_to_real)
-hidden = tf.keras.layers.Conv2D(16, (3,3), padding="same", activation="relu")(hidden)
-hidden = tf.keras.layers.MaxPooling2D(pool_size=3)(hidden)
-# hidden = tf.keras.layers.Dropout(0.25)(hidden)
-
-hidden = tf.keras.layers.Conv2D(16, (3,3), padding="same", activation="relu")(hidden)
-hidden = tf.keras.layers.Conv2D(16, (3,3), padding="same", activation="relu")(hidden)
-hidden = tf.keras.layers.MaxPooling2D(pool_size=3)(hidden)
+hidden = tf.keras.layers.Conv2D(96, kernel_size=11, strides=4, padding="same", activation='relu', input_shape=(num_stft_windows, num_frequencies, 1))(x_freq_domain_to_real)
+hidden = tf.keras.layers.Conv2D(256, kernel_size=5, padding="same", activation="relu")(hidden)
+hidden = tf.keras.layers.MaxPooling2D(pool_size=2)(hidden)
+hidden = tf.keras.layers.Conv2D(384, kernel_size=3, padding="same", activation="relu")(hidden)
+hidden = tf.keras.layers.Conv2D(384, kernel_size=3, padding="same", activation="relu")(hidden)
+hidden = tf.keras.layers.MaxPooling2D(pool_size=2)(hidden)
 # hidden = tf.keras.layers.Dropout(0.25)(hidden)
 
 hidden = tf.keras.layers.Flatten()(hidden)
-hidden = tf.keras.layers.Dense(100, activation="relu")(hidden)
 # hidden = tf.keras.layers.Dropout(0.25)(hidden)
+hidden = tf.keras.layers.Dense(4096, activation="relu")(hidden)
+hidden = tf.keras.layers.Dense(4096, activation="relu")(hidden)
+
 y_hat = tf.keras.layers.Dense(num_frequencies * num_stft_windows, activation="linear")(hidden)
 
 confidence = tf.constant(0.5, tf.float32)
@@ -77,7 +77,7 @@ y_ideal_binary_mask = tf.cast(tf.greater(tf.abs(y_true_freq_domain), y_signal_bi
 
 err = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(logits=tf.reshape(y_hat, [-1, 1]), labels=tf.reshape(y_ideal_binary_mask, [-1, 1])))
 
-optimizer = tf.train.AdamOptimizer(learning_rate=0.001).minimize(err)
+optimizer = tf.train.AdamOptimizer(learning_rate=0.0001).minimize(err)
 
 def SplitIntoNSizedWindows(arr, n):
     clip_length = len(arr) % n
@@ -100,9 +100,12 @@ r = sess.run(y_ideal_binary_mask, feed_dict=data_dict)
 spectro(np.reshape(r, [-1, num_frequencies]), "ideal_mask.png")
 print("spectro'd")
 
+print("frequencies: " + str(num_frequencies))
+print("stft_windows: " + str(num_stft_windows))
+
 errs = []
 
-for i in range(30):
+for i in range(100):
     sess.run(optimizer, feed_dict=data_dict)
     e = sess.run(err, feed_dict=data_dict)
     errs.append(e)
