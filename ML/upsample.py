@@ -13,9 +13,9 @@ print("Audio read")
 
 target_num_samples = int(target_rate * len(source_audio) / float(source_rate))
 print("target samples: " + str(target_num_samples))
-res_audio = scipy.signal.resample_poly(source_audio, target_rate/100, source_rate/100)
+# res_audio = scipy.signal.resample_poly(source_audio, target_rate/100, source_rate/100)
 print("Audio resampled")
-wav.write("./room-44100.wav", target_rate, res_audio)
+# wav.write("./room-44100.wav", target_rate, res_audio)
 res_audio = None
 
 print("Audio written")
