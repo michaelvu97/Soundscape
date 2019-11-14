@@ -7,6 +7,8 @@ import os
 import re
 import matplotlib.pyplot as plt
 
+NUM_FEATURES = 5
+
 def FrameToFeatures(frame_time_domain):
     frame_length = len(frame_time_domain)
     frame_time_domain = np.array(frame_time_domain).astype(np.float32)
@@ -37,6 +39,21 @@ def FrameToFeatures(frame_time_domain):
 
     return [log_frame_energy, zero_crossing_rate, normalized_autocorrelation_lag_1, first_linear_predictor_coeff, log_linear_predictor_err]
 
-features = FrameToFeatures([1,2,3,4,3,2,3,3,-1,2,-1,-1,3])
+dummy_x_train = [[1,2,-1,2],[1,2,3,4,5,3,3,2]]
+dummy_y_train = [[1],[0]]
 
-print(features)
+x_train = [FrameToFeatures(x) for x in dummy_x_train]
+y_train = dummy_y_train
+
+def GetModel():
+    inputs = tf.keras.Input(shape=(NUM_FEATURES,), name="features")
+    outputs = tf.keras.layers.Dense(1, activation="sigmoid", name="predictions")(inputs)
+    return tf.keras.models.Model(inputs=inputs, outputs=outputs)
+
+model = GetModel()
+model.compile(loss="binary_crossentropy", optimizer="adam", metrics=["accuracy"])
+
+print("Fitting model on training data")
+history = model.fit(x_train, y_train, epochs=500)
+
+print("History= " + str(history))
