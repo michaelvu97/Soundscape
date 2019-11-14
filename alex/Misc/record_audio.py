@@ -8,7 +8,7 @@ samp_rate = 44100 # 44.1kHz sampling rate
 chunk = 4000 # 2^12 samples for buffer
 sample_num = 4
 record_secs = 10 # seconds to record
-dev_index = 3 # device index found by p.get_device_info_by_index(ii)
+dev_index = 4 # device index found by p.get_device_info_by_index(ii)
 wav_output_filename = 'test_small_chunk.wav' # name of .wav file
 
 audio = pyaudio.PyAudio() # create pyaudio instantiation

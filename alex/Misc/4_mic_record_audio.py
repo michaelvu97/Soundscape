@@ -2,10 +2,10 @@
 import pyaudio
 import wave
 import numpy as np
-import pygame
 import struct
 import time
 from scipy.fftpack import fft
+from utils import get_device_indices
 
 
 def convert_to_4_channels(one, two, three, four):
@@ -18,20 +18,34 @@ def convert_to_4_channels(one, two, three, four):
     return(stereo)
 
 
+def set_device_indices():
+    indices = get_device_indices();
+
+    print("IM HERE")
+    
+    #microphones are in pairs like this
+    dev1_index = indices[0];
+    print(indices[0], dev1_index)
+    dev4_index = indices[1];
+    
+    dev2_index = indices[2]
+    dev3_index = indices[3]
+
+
 form_1 = pyaudio.paInt16 # 16-bit resolution
 chans = 1 # 1 channel
 samp_rate = 44100 # 44.1kHz sampling rate
-chunk = 1 # 2^12 samples for buffer
+chunk = 4096 # 2^12 samples for buffer
 record_secs = 30 # seconds to record
-dev1_index = 4 # device index found by p.get_device_info_by_index(ii)
-dev2_index = 5 # device index found by p.get_device_info_by_index(ii)
-dev3_index = 6 # device index found by p.get_device_info_by_index(ii)
-dev4_index = 7 # device index found by p.get_device_info_by_index(ii)
-wav_output_filename = 'qtest.wav' # name of .wav file
-wav_output_filename1 = 'qtest1.wav' # name of .wav file
-wav_output_filename2 = 'qtest2.wav' # name of .wav file
-wav_output_filename3 = 'qtest3.wav' # name of .wav file
-wav_output_filename4 = 'qtest4.wav' # name of .wav file
+dev1_index = 0 # device index found by p.get_device_info_by_index(ii)
+dev2_index = 0 # device index found by p.get_device_info_by_index(ii)
+dev3_index = 0 # device index found by p.get_device_info_by_index(ii)
+dev4_index = 0 # device index found by p.get_device_info_by_index(ii)
+wav_output_filename =  'atest.wav' # name of .wav file
+wav_output_filename1 = 'atest1.wav' # name of .wav file
+wav_output_filename2 = 'atest2.wav' # name of .wav file
+wav_output_filename3 = 'atest3.wav' # name of .wav file
+wav_output_filename4 = 'atest4.wav' # name of .wav file
 frequencies = []
 sources = 100
 max_energy = 0
@@ -48,6 +62,7 @@ RED =   (255,   0,   0)
 
 audio = pyaudio.PyAudio() # create pyaudio instantiation
 
+set_device_indices()
 
 # Pre fill an array with the frequency data  corresponding to each index of the fft
 for i in range(int(chunk/2)):

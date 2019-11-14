@@ -1,12 +1,12 @@
-#    !/Library/Frameworks/Python.framework/Versions/3.6/bin/python3
+#!/Library/Frameworks/Python.framework/Versions/3.6/bin/python3
 import numpy as np
 import math
 import scipy.io.wavfile
 
 
 
-rate, a = scipy.io.wavfile.read("./Honk Trimmed mic 3.wav")
-rate, b = scipy.io.wavfile.read("./Honk Trimmed mic 4.wav")
+rate, a= scipy.io.wavfile.read("/Users/alexmertens/Desktop/School/School/Capstone/code/Soundscape/alex/Sounds/Trimmed/honk mic 3 trimmed.wav")
+rate, b = scipy.io.wavfile.read("/Users/alexmertens/Desktop/School/School/Capstone/code/Soundscape/alex/Sounds/Trimmed/honk mic 4 trimmed.wav")
 
 #rate, a = scipy.io.wavfile.read("./honk mic 3.wav")
 #rate, b = scipy.io.wavfile.read("./honk mic 4.wav")
@@ -26,7 +26,7 @@ def compute_energy(length, array):
 
 
 
-steps = 1
+steps = 5
 step_length = int(length / steps)
 
 for i in range(steps):
@@ -46,4 +46,5 @@ for i in range(steps):
     
     print("Circle center: ", k)
     print("Circle radius: ", rootl)
+    print("Circle equation: (x -",k,")^2 + y^2 =",l)
     print()

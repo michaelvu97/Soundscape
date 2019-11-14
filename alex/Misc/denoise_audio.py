@@ -7,7 +7,7 @@ from scipy import signal
 form_1 = pyaudio.paInt16 # 16-bit resolution
 chans = 1 # 1 channel
 samp_rate = 44100 # 44.1kHz sampling rate
-chunk = 4 # 2^12 samples for buffer
+chunk = 4096 # 2^12 samples for buffer
 record_secs = 10 # seconds to record
 dev_index = 2 # device index found by p.get_device_info_by_index(ii)
 wav_output_filename = 'test3.wav' # name of .wav file
