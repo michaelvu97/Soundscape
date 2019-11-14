@@ -9,7 +9,12 @@ target_rate = 44100
 
 # Resample audio
 source_rate, source_audio = wav.read("./room.wav")
-res_audio = scipy.signal.resample(source_audio, target_rate)
+print("Audio read")
+
+target_num_samples = int(target_rate * len(source_audio) / float(source_rate))
+print("target samples: " + str(target_num_samples))
+res_audio = scipy.signal.resample_poly(source_audio, target_rate/100, source_rate/100)
+print("Audio resampled")
 wav.write("./room-44100.wav", target_rate, res_audio)
 res_audio = None
 
@@ -31,7 +36,5 @@ target_sample_to_source_sample = int(float(source_rate) / float(target_length))
 for i in range(target_length):
     source_idx = i * target_sample_to_source_sample
     res_label[i] = arr[source_idx]
-
-print(len(res))
 
 np.save('room.npy', res_label)
