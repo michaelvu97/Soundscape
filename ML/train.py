@@ -3,14 +3,48 @@ import tensorflow as tf
 import scipy.io.wavfile
 import scipy.misc
 import math
+import os
+import re
 import matplotlib.pyplot as plt
 
-rate, sample1 = scipy.io.wavfile.read("sample-000000.wav")
-sample1 = sample1.astype(np.float32)
+def get_data():
+    files = [x for x in os.listdir() if re.search("sample.+?\.wav$", x)]
+    files = files[:10] # For now (on my laptop), only use the first 10 samples
+    files_sampled = []
+    rate = 0
+    for file in files:
+        rate, sample = scipy.io.wavfile.read(file)
+        files_sampled.append(sample.astype(np.float32))
+    return rate, files_sampled
 
-def generatesine(sample_period, length):
-    return np.array([math.sin(float(x) * 2 * 3.14 / sample_period) for x in range(length)])
 
+def get_random_background_noise(sample, bg_sample):
+    # This assumes that the bg noise wav has the same sample rate
+    sample_len = len(sample)
+    bg_sample_len = len(bg_sample)
+    max_bg_sample_idx = bg_sample_len - sample_len - 1
+    start = np.random.randint(0, max_bg_sample_idx)
+    return bg_sample[start:start+sample_len]
+
+def normalize(sample):
+    max_amplitude = (1 << 15) - 1
+    sample_max_amplitude = math.sqrt(max([x ** 2 for x in sample]))
+    multiplier = max_amplitude / sample_max_amplitude
+    return sample * multiplier
+
+rate, samples = get_data()
+np.random.seed(42069)
+np.random.shuffle(samples)
+
+# Normalize samples
+samples = [normalize(x) for x in samples]
+
+# Add noise to samples
+# TODO add noise to tf model instead.
+bg_rate, bg_sample = scipy.io.wavfile.read('./BG/BG_COFFEE.wav')
+bg_sample = bg_sample.astype(np.float32)[:,0]
+samples_with_noise = np.array([x + get_random_background_noise(x, bg_sample) for x in samples])
+bg_sample = None
 
 def spectro(x, name):
     # plt.imshow(np.transpose(x))
@@ -18,10 +52,7 @@ def spectro(x, name):
     # plt.show()
     scipy.misc.imsave(name, x)
 
-sample_with_noise = sample1 \
-    + 2000.0 * generatesine(rate / (3*440), sample1.shape[0]) #\
-    # + np.random.normal(0, 1000, size=(sample1.shape[0])).astype(np.float32)
-scipy.io.wavfile.write("TEST_INPUT_WITH_NOISE.wav", rate, sample_with_noise.astype(np.int16))
+scipy.io.wavfile.write("TEST_INPUT_WITH_NOISE.wav", rate, np.concatenate(samples_with_noise).astype(np.int16))
 
 window_size_seconds = 0.05
 window_size_samples = int(window_size_seconds * rate)
@@ -52,8 +83,8 @@ x_freq_domain_to_real = tf.expand_dims(tf.abs(x_freq_domain), 3)
 hidden = tf.keras.layers.Conv2D(96, kernel_size=11, strides=4, padding="same", activation='relu', input_shape=(num_stft_windows, num_frequencies, 1))(x_freq_domain_to_real)
 hidden = tf.keras.layers.Conv2D(256, kernel_size=5, padding="same", activation="relu")(hidden)
 hidden = tf.keras.layers.MaxPooling2D(pool_size=2)(hidden)
-hidden = tf.keras.layers.Conv2D(384, kernel_size=3, padding="same", activation="relu")(hidden)
-hidden = tf.keras.layers.Conv2D(384, kernel_size=3, padding="same", activation="relu")(hidden)
+hidden = tf.keras.layers.Conv2D(300, kernel_size=3, padding="same", activation="relu")(hidden)
+hidden = tf.keras.layers.Conv2D(300, kernel_size=3, padding="same", activation="relu")(hidden)
 hidden = tf.keras.layers.MaxPooling2D(pool_size=2)(hidden)
 # hidden = tf.keras.layers.Dropout(0.25)(hidden)
 
@@ -75,25 +106,44 @@ reconstructed = tf.contrib.signal.inverse_stft(result_masked_limited_unflattened
 y_signal_binary_threshold = tf.constant(20000, tf.float32)
 y_ideal_binary_mask = tf.cast(tf.greater(tf.abs(y_true_freq_domain), y_signal_binary_threshold), tf.float32)
 
-err = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(logits=tf.reshape(y_hat, [-1, 1]), labels=tf.reshape(y_ideal_binary_mask, [-1, 1])))
+error_coefficients = tf.constant(np.sqrt(np.linspace(1, 0.01, num_frequencies)), tf.float32)
+
+error_gradient = tf.nn.sigmoid_cross_entropy_with_logits(logits=tf.reshape(y_hat, [-1, 1]), labels=tf.reshape(y_ideal_binary_mask, [-1, 1]))
+error_low_pass = tf.square(tf.sigmoid(tf.reshape(y_hat,[-1, num_stft_windows, num_frequencies])) - error_coefficients)
+err = tf.reduce_mean(error_gradient) + 0.25 * tf.reduce_mean(error_low_pass)
 
 optimizer = tf.train.AdamOptimizer(learning_rate=0.0001).minimize(err)
 
-def SplitIntoNSizedWindows(arr, n):
-    clip_length = len(arr) % n
-    arr = arr[:-clip_length]
-    num_partitions = len(arr) / n
+def SplitIntoNSizedWindows(arrs, n):
+    # arrs is a list of sound files
+    result = []
 
-    split_arr = np.split(arr, num_partitions)
-    return np.vstack(split_arr)
+    for arr in arrs: 
+        clip_length = len(arr) % n
+        arr = arr[:-clip_length]
+        num_partitions = len(arr) / n
+
+        if num_partitions <= 0:
+            continue
+
+        split_arr = np.split(arr, num_partitions)
+        for partition in split_arr:
+            result.append(partition)
+
+    return np.vstack(result)
 
 sess = tf.InteractiveSession()
 init = tf.global_variables_initializer()
 sess.run(init)
 
 data_dict = {
-    y_true_time_domain: SplitIntoNSizedWindows(sample1, MODEL_INPUT_TIME_SAMPLES), 
-    x_time_domain: SplitIntoNSizedWindows(sample_with_noise, MODEL_INPUT_TIME_SAMPLES)
+    y_true_time_domain: SplitIntoNSizedWindows(samples[:1], MODEL_INPUT_TIME_SAMPLES), 
+    x_time_domain: SplitIntoNSizedWindows(samples_with_noise[:1], MODEL_INPUT_TIME_SAMPLES)
+}
+
+test_dict = {
+    y_true_time_domain: SplitIntoNSizedWindows(samples[9:], MODEL_INPUT_TIME_SAMPLES),
+    x_time_domain: SplitIntoNSizedWindows(samples[9:], MODEL_INPUT_TIME_SAMPLES)
 }
 
 r = sess.run(y_ideal_binary_mask, feed_dict=data_dict)
@@ -103,25 +153,28 @@ print("spectro'd")
 print("frequencies: " + str(num_frequencies))
 print("stft_windows: " + str(num_stft_windows))
 
-errs = []
 
-for i in range(100):
+for i in range(15):
     sess.run(optimizer, feed_dict=data_dict)
-    e = sess.run(err, feed_dict=data_dict)
-    errs.append(e)
-    curr_mask = sess.run(tf.cast(tf.greater(y_hat, confidence), tf.int16), feed_dict=data_dict)
-    spectro(np.reshape(curr_mask, [-1, num_frequencies]), "./test_masks/" + str(i) + ".png")
-    print(str(i) +": " + str(e))
+    train_err = sess.run(err, feed_dict=data_dict)
+    test_err = sess.run(err, feed_dict=test_dict)
+    curr_mask_train = sess.run(tf.cast(tf.greater(y_hat, confidence), tf.int16), feed_dict=data_dict)
+    curr_mask_test = sess.run(tf.cast(tf.greater(y_hat, confidence), tf.int16), feed_dict=test_dict)
+    spectro(np.reshape(curr_mask_train, [-1, num_frequencies]), "./test_masks/" + str(i) + "-train.png")
+    spectro(np.reshape(curr_mask_test, [-1, num_frequencies]), "./test_masks/" + str(i) + "-test.png")
+    print(str(i) +": " + str(train_err) + "/" + str(test_err))
 
 # Generate some test audio?
 test = sess.run(reconstructed, feed_dict=data_dict)
 
-# Energy
-scipy.io.wavfile.write("TEST.wav", rate, test.flatten().astype(np.int16))
+scipy.io.wavfile.write("TRAIN.wav", rate, test.flatten().astype(np.int16))
+scipy.io.wavfile.write("TEST.wav", rate, sess.run(reconstructed, feed_dict=test_dict).flatten().astype(np.int16))
 
 spectro(np.reshape(sess.run(tf.abs(result_masked_limited), feed_dict=data_dict), [-1, num_frequencies]), "result_masked.png")
 spectro(np.reshape(sess.run(tf.cast(tf.greater(y_hat, confidence), tf.int16), feed_dict=data_dict),[-1, num_frequencies]), "result_mask.png")
 spectro(np.reshape(sess.run(tf.abs(x_freq_flattened), feed_dict=data_dict),[-1, num_frequencies]), "input.png")
+
+
 
 # plt.plot(errs)
 # plt.show()
