@@ -5,36 +5,44 @@ from vad import FrameToFeatures
 import matplotlib.pyplot as plt
 import h5py
 
-rate, wav = scipy.io.wavfile.read("./sample-000025.wav")
+class VAD:
+    def __init__(self, model_path):
+        self.model = tf.keras.models.load_model(model_path)
 
-# add noise
-wav = wav + 25.0 * np.random.normal(size=len(wav))
+    def is_voice(self, samples):
+        features = np.array([FrameToFeatures(samples)])
+        return self.model.predict_classes(features, verbose=0)[0][0] == 1
 
-minutes_to_samples = 44100 * 60
+if __name__ == "__main__":
+    rate, wav = scipy.io.wavfile.read("./sample-000010.wav")
 
-WINDOW_SIZE = 4410 # 0.1 second window
-STRIDE = 2205
+    # add noise
+    # wav = wav + 25.0 * np.ran dom.normal(size=len(wav))
 
-new_model = tf.keras.models.load_model('./saved_models/model.h5')
+    minutes_to_samples = 44100 * 60
 
-results = []
+    WINDOW_SIZE = 4410 # 0.1 second window
+    STRIDE = 2205
 
-i = 0
-while i < len(wav):
-    features = np.array([FrameToFeatures(wav[i:i+WINDOW_SIZE])])
-    res = new_model.predict_classes(features)
-    # is_speech = res[0][0] > 0.5
+    vad = VAD('./saved_models/model.h5')
 
-    # results.append(is_speech)
-    results.append(res[0][0])
+    results = []
 
-    i += STRIDE
+    i = 0
+    while i < len(wav):
+        res = vad.is_voice(wav[i:i+WINDOW_SIZE])
+        # is_speech = res[0][0] > 0.5
 
-fig, ax1 = plt.subplots()
+        # results.append(is_speech)
+        results.append(res)
 
-ax1.plot(wav, color="red")
-ax2 = ax1.twinx()
+        i += STRIDE
 
-ax2.plot(np.linspace(0, len(wav), len(results)), np.array(results).astype(np.int32))
+    fig, ax1 = plt.subplots()
 
-plt.show()
+    ax1.plot(wav, color="red")
+    ax2 = ax1.twinx()
+
+    ax2.plot(np.linspace(0, len(wav), len(results)), np.array(results).astype(np.int32))
+
+    plt.show()
