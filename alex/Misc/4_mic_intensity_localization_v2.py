@@ -11,7 +11,10 @@ import time
 from draw_arrow import drawArrow, drawArrowNone, drawMicLevels
 from scipy.fftpack import fft
 from utils import get_device_indices
-
+import sys
+sys.path.append("../../ML")
+from vad_test import VAD
+from rVAD_custom import VoiceActivityDetector
 
 def set_device_indices():
     indices = get_device_indices();
@@ -59,6 +62,7 @@ dev4_index = 3 # device index found by p.get_device_info_by_index(ii)
 height = 600
 width = 1000
 
+vad = VoiceActivityDetector(samp_rate)
 
 BLACK = (  0,   0,   0)
 WHITE = (255, 255, 255)
@@ -78,8 +82,8 @@ amp =1
 size = [width, height]
 screen = pygame.display.set_mode(size)
 # create pyaudio stream
-stream1 = audio.open(format = form_1,rate = samp_rate,channels = 1, \
-                    input_device_index = dev1_index,input = True, \
+stream1 = audio.open(format = form_1,rate = samp_rate, channels = 1, \
+                    input_device_index = dev1_index, input = True, \
                     frames_per_buffer=chunk)
 
 stream2 = audio.open(format = form_1,rate = samp_rate,channels = 1, \
@@ -93,8 +97,8 @@ stream3 = audio.open(format = form_1,rate = samp_rate,channels = 1, \
 stream4 = audio.open(format = form_1,rate = samp_rate,channels = 1, \
                     input_device_index = dev4_index,input = True, \
                     frames_per_buffer=chunk)
-
-while(True):    
+done = False
+while not done:    
 
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
@@ -169,7 +173,12 @@ while(True):
     
         centre2 = k2 - R2
     
-        
+        # print(a_energy)
+        is_voice = vad.is_speech(section_a)
+        if is_voice:
+            print("VOICE")
+        else:
+            print("NOT VOICE")
     
         #Solve for intersectin of circles source: http://paulbourke.net/geometry/circlesphere/
     
