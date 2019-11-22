@@ -8,26 +8,13 @@ import wave
 import pygame
 import struct
 import time
-from draw_arrow import drawArrow, drawArrowNone, drawMicLevels
+import draw_arrow
 from scipy.fftpack import fft
-from utils import get_device_indices
+import utils
 import sys
 sys.path.append("../../ML")
 from vad_test import VAD
 from rVAD_custom import VoiceActivityDetector
-
-def set_device_indices():
-    indices = get_device_indices();
-
-    print("IM HERE")
-    
-    #microphones are in pairs like this
-    dev1_index = indices[0];
-    print(indices[0], dev1_index)
-    dev4_index = indices[1];
-    
-    dev2_index = indices[2]
-    dev3_index = indices[3]
 
 
 #rate, a = scipy.io.wavfile.read("/Users/alexmertens/Desktop/School/School/Capstone/code/Soundscape/alex/Sounds/Trimmed/honk mic 3 trimmed.wav")
@@ -43,22 +30,16 @@ def set_device_indices():
 #length = min(len(a), len(b), len(c))
 
 # Compute the energy stored in the sound array given
-def compute_energy(length, array):
-    energy = 0
-    for i in range(length):
-        energy = energy + array[i] * array[i]
-
-    return energy
-
+def compute_energy(data_channels):
+    if data_channels.ndim == 2:
+        return np.sum(np.square(data_channels), axis=1)
+    else:
+        return np.sum(np.square(data_channels))
 
 
 form_1 = pyaudio.paInt16 # 16-bit resolution
 samp_rate = 44100 # 44.1kHz sampling rate
 chunk = 8192 # 2^12 samples for buffer
-dev1_index = 2 # device index found by p.get_device_info_by_index(ii)
-dev2_index = 4 # device index found by p.get_device_info_by_index(ii)
-dev3_index = 5 # device index found by p.get_device_info_by_index(ii)
-dev4_index = 3 # device index found by p.get_device_info_by_index(ii)
 height = 600
 width = 1000
 
@@ -70,115 +51,79 @@ BLUE =  (  0,   0, 255)
 GREEN = (  0, 255,   0)
 RED =   (255,   0,   0)
 audio = pyaudio.PyAudio() # create pyaudio instantiation
-set_device_indices()
-print(dev1_index, dev2_index, dev3_index)
+device_indexes = utils.get_device_indices()
 
 # Initialize butterworth filter
 nyq = 0.5 * samp_rate
-low = 100/nyq
-high = 800/nyq
+low = 100 / nyq
+high = 800 / nyq
 den, num = signal.butter(2, [low, high], btype='band')
-amp =1
+amp = 1
 size = [width, height]
 screen = pygame.display.set_mode(size)
-# create pyaudio stream
-stream1 = audio.open(format = form_1,rate = samp_rate, channels = 1, \
-                    input_device_index = dev1_index, input = True, \
-                    frames_per_buffer=chunk)
 
-stream2 = audio.open(format = form_1,rate = samp_rate,channels = 1, \
-                    input_device_index = dev2_index,input = True, \
+streams = [
+    audio.open(format = form_1,rate = samp_rate, channels = 1, \
+                    input_device_index = device_index, input = True, \
                     frames_per_buffer=chunk)
+        for device_index in device_indexes
+    ]
 
-stream3 = audio.open(format = form_1,rate = samp_rate,channels = 1, \
-                    input_device_index = dev3_index,input = True, \
-                    frames_per_buffer=chunk)
-
-stream4 = audio.open(format = form_1,rate = samp_rate,channels = 1, \
-                    input_device_index = dev4_index,input = True, \
-                    frames_per_buffer=chunk)
 done = False
 while not done:    
 
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             done=True
+
     screen.fill(BLACK)
-    data1 = stream1.read(chunk, exception_on_overflow=False)
-    data2 = stream2.read(chunk, exception_on_overflow=False)
-    data3 = stream3.read(chunk, exception_on_overflow=False)
-    data4 = stream4.read(chunk, exception_on_overflow=False)
 
-    d = np.fromstring(data1, dtype=np.int16)
-    a = np.fromstring(data2, dtype=np.int16)
-    c = np.fromstring(data3, dtype=np.int16)
-    b = np.fromstring(data4, dtype=np.int16)
+    data = [np.fromstring(stream.read(chunk, exception_on_overflow=False), dtype=np.int16).astype(np.float64) for stream in streams]
 
-    a = signal.filtfilt(den, num, a)
-    b = signal.filtfilt(den, num, b)
-    c = signal.filtfilt(den, num, c)
-    d = signal.filtfilt(den, num, d)
+    # Filtering
+    data_filtered = signal.filtfilt(den, num, data)
 
-    a = np.array(a, dtype=np.float64)
-    b = np.array(b, dtype=np.float64)
-    c = np.array(c, dtype=np.float64)
-    d = np.array(d, dtype=np.float64)
+    # Normalization
+    data_filtered_normalized = data_filtered / 256
 
-    a = a / 256
-    b = b / 256
-    c = c / 256
-    d = d / 256
+    # energies = utils.compute_energy(data_filtered_normalized)
+    # print("Energies: " + str(energies.astype(np.int32)))
 
-    aenergy = compute_energy(len(a), a)
-    benergy = compute_energy(len(b), b)
-    cenergy = compute_energy(len(c), c)
-    denergy = compute_energy(len(d), d)
-
-#    print("A:", aenergy)
-#    print("B:", benergy)
-#    print("C:", cenergy)
-#    print("D:", denergy)
-#    print()
-
-    length = min(len(a), len(b), len(c))
-
+    length = min(len(data[0]), len(data[1]), len(data[2]), len(data[3]))
 
     steps = 1
     step_length = int(length / steps)
     
     for i in range(steps):
-    #    print(i)
-    #    print(len(a))
-    #    print((i+1)*step_length)
-        section_a = a[i*step_length : (i+1)*step_length]
-        section_b = b[i*step_length : (i+1)*step_length]
-        section_c = c[i*step_length : (i+1)*step_length]
-        a_energy = compute_energy(step_length, section_a)
-        b_energy = compute_energy(step_length, section_b)
-        c_energy = compute_energy(step_length, section_c)
-        
+        windowed_data = data_filtered_normalized[:, i * step_length:(i + 1) * step_length]
+        window_energy = utils.compute_energy(windowed_data)
+
         # Define variables from the algorithm
         
         R1 = 7.5 
-        m1 = a_energy / b_energy
+        m1 = window_energy[0] / window_energy[1]
         k1 = R1 * (m1 + 1) / (m1 - 1)
         l1 = (1 / (m1 - 1)) * ((4*m1*R1*R1)/(m1-1))
         rootl1 = np.sqrt(l1)
         
         R2 = 7.5
-        m2 = a_energy / c_energy
+        m2 = window_energy[0] / window_energy[2]
         k2 = R2 * (m2 + 1) / (m2 - 1)
         l2 = (1 / (m2 - 1)) * ((4*m2*R2*R2)/(m2-1))
         rootl2 = np.sqrt(l2)
     
         centre2 = k2 - R2
-    
-        # print(a_energy)
-        is_voice = vad.is_speech(section_a)
-        if is_voice:
-            print("VOICE")
-        else:
-            print("NOT VOICE")
+        
+        # Vector of predictions of whether each channel is voice
+        is_voice = vad.is_speech(windowed_data)
+        print(is_voice)
+        draw_arrow.drawVoice(screen, is_voice[0], is_voice[2], is_voice[3], is_voice[1])
+        pygame.display.update()
+        # For now for testing, just examing channel 0 (A)
+        # if is_voice[0]:
+        #     print("VOICE")
+        # else:
+        #     print("NOT VOICE")
     
         #Solve for intersectin of circles source: http://paulbourke.net/geometry/circlesphere/
     
@@ -188,10 +133,10 @@ while not done:
         r1 = rootl2
     
         if(d > (r0 + r1)):
-            print("NO SOLUTIONS")
+            # print("NO SOLUTIONS")
             continue
         if(d < abs(r0 - r1)):
-            print("NO SOLUTIONS")
+            # print("NO SOLUTIONS")
             continue
     
         A = (r0**2 - r1**2 + d**2) / (2 * d)
@@ -241,6 +186,6 @@ while not done:
     #    print("Intersection 2:", x3_2, y3_2)
     #    print()
     
-        print("Angle of Sound:", angle)
-        drawArrow(screen, angle)
+        # print("Angle of Sound:", angle)
+        draw_arrow.drawArrow(screen, angle)
         pygame.display.update()
