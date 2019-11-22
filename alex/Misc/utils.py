@@ -3,7 +3,7 @@ p = pyaudio.PyAudio()
 
 def get_device_indices():
     deviceIndices = [];
-    USB_DEVICE_NAME = "Internal Microphone (Conexant S"
+    USB_DEVICE_NAME = "USB Audio Device"
     for ii in range(p.get_device_count()):
         name = (p.get_device_info_by_index(ii).get('name'))
         print(name)
