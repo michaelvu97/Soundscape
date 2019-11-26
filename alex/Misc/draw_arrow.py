@@ -36,14 +36,10 @@ def drawVoice(screen, forward, right, back, left):
 
     pygame.draw.circle(screen, pygame.Color(0, 255, 0), [300, 250], radius)
 
-    if forward:
-        pygame.draw.circle(screen, color, forward_pos, radius)
-    if left:
-        pygame.draw.circle(screen, color, left_pos, radius)
-    if right:
-        pygame.draw.circle(screen, color, right_pos, radius)
-    if back:
-        pygame.draw.circle(screen, color, back_pos, radius)
+    pygame.draw.circle(screen, pygame.Color(int(forward * 255), 0, 0), forward_pos, radius)
+    pygame.draw.circle(screen, pygame.Color(int(left * 255), 0, 0), left_pos, radius)
+    pygame.draw.circle(screen, pygame.Color(int(right * 255), 0, 0), right_pos, radius)
+    pygame.draw.circle(screen, pygame.Color(int(back * 255), 0, 0), back_pos, radius)
 
 # Levels
 def drawMicLevels(screen, levels):

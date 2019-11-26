@@ -84,7 +84,7 @@ while not done:
     data = np.stack([np.fromstring(stream.read(chunk, exception_on_overflow=False), dtype=np.int16).astype(np.float64) for stream in streams])
     
     # Calibrate
-    calibration_mode = True
+    calibration_mode = False
     if (calibration_mode):
         calibration.update(utils.compute_energy(data))
         gain_correction = calibration.get_gain_correction()
@@ -96,6 +96,7 @@ while not done:
 
     # Filtering
     data_filtered = signal.filtfilt(den, num, data_gain_corrected)
+    data_unfiltered = data_gain_corrected
 
     # Normalization
     data_filtered_normalized = data_filtered / 256
@@ -109,6 +110,7 @@ while not done:
     step_length = int(length / steps)
     
     for i in range(steps):
+        windowed_data_unfiltered = data_unfiltered[:, i * step_length:(i + 1) * step_length]
         windowed_data = data_filtered_normalized[:, i * step_length:(i + 1) * step_length]
         window_energy = utils.compute_energy(windowed_data)
 
@@ -208,9 +210,10 @@ while not done:
         print("diff: " + str(np.abs(window_energy_db[0] - window_energy_db[1])) + " , threshold: " + str(diff_threshold_db))
 
         # Vector of predictions of whether each channel is voice
-        is_voice = vad.is_speech(windowed_data)
+        voice_confidence = vad.is_speech(windowed_data_unfiltered)
+
         # print(is_voice)
-        draw_arrow.drawVoice(screen, False, is_voice[1], False, is_voice[0])
+        draw_arrow.drawVoice(screen, 0.0, voice_confidence[1], 0.0, voice_confidence[0])
 
         if channels_are_similar:
             angle = None

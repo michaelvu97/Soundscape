@@ -148,10 +148,11 @@ class VoiceActivityDetector():
         return detected_windows
  
     def is_speech(self, data):
-        confidence=0.2
+        """
+        Returns a confidence [0,1] of each channel being speech.
+        """
         if data.ndim == 2:
             windows = np.stack([self.detect_speech(x)[..., 1] for x in data])
-            windows_mean = np.mean(windows, axis=1)
-            return np.greater(windows_mean, confidence)
+            return np.mean(windows, axis=1)
         else:
-            return np.mean(self.detect_speech(data)[...,1]) > confidence
+            return np.mean(self.detect_speech(data)[...,1])
