@@ -29,12 +29,58 @@ import live_calibration
 #
 #length = min(len(a), len(b), len(c))
 
-# Compute the energy stored in the sound array given
-def compute_energy(data_channels):
-    if data_channels.ndim == 2:
-        return np.sum(np.square(data_channels), axis=1)
+def localize(channel_left_energy, channel_forward_energy, channel_right_energy, channel_back_energy):
+    left_db = 20.0 * np.log1p(channel_left_energy)
+    forward_db = 20.0 * np.log1p(channel_forward_energy)
+    right_db = 20.0 * np.log1p(channel_right_energy)
+    back_db = 20.0 * np.log1p(channel_back_energy)
+
+    threshold_db = 10.0
+
+    # NOTE: This is ultra stupid
+
+    diff_front_back = forward_db - back_db
+    diff_left_right = left_db - right_db
+
+    is_forward = diff_front_back > threshold_db
+    is_back = -diff_front_back > threshold_db
+    is_left = diff_left_right > threshold_db
+    is_right = -diff_left_right > threshold_db
+
+    lr_neutral = not is_left and not is_right
+    fb_neutral = not is_forward and not is_back
+
+    if lr_neutral and fb_neutral:
+        return None
+
+    if lr_neutral:
+        # Must be f/b biased
+        if is_forward:
+            return 90
+
+        # Backward
+        return 270
+
+    if fb_neutral:
+        # Must be lr biased
+        if is_right:
+            return 0
+
+        # Must be left
+        return 180
+
+    # Both directions are biased
+    # Just dummy switch through them
+    if is_forward:
+        if is_left:
+            return 90 + 45
+        else:
+            return 45
     else:
-        return np.sum(np.square(data_channels))
+        if is_left:
+            return 180 + 45
+        else:
+            return 360 - 45
 
 
 form_1 = pyaudio.paInt16 # 16-bit resolution
@@ -92,7 +138,7 @@ while not done:
         data_gain_corrected = data * gain_correction
     else:
         # Hardcoded calibration
-        data_gain_corrected = data * [[1.0],[1.20]]
+        data_gain_corrected = data * [[1.0999807 ],[1.40],[1.3398968 ],[1.        ]]
 
     # Filtering
     data_filtered = signal.filtfilt(den, num, data_gain_corrected)
@@ -197,31 +243,13 @@ while not done:
 
         # Localization using energy difference
 
-        window_energy_db = 20.0 * np.log1p(window_energy)
-
-        # percent_difference_to_register_angle = 0.004
-
-        # diff = 2 * np.abs(window_energy_db[0] - window_energy_db[1]) / np.abs(window_energy[0] + window_energy_db[1])
-        # print(window_energy_db[0] - window_energy_db[1])
-        # channels_are_similar = diff < percent_difference_to_register_angle
-        diff_threshold_db = 10.0
-        channels_are_similar = np.abs(window_energy_db[0] - window_energy_db[1]) < diff_threshold_db
-
-        print("diff: " + str(np.abs(window_energy_db[0] - window_energy_db[1])) + " , threshold: " + str(diff_threshold_db))
-
         # Vector of predictions of whether each channel is voice
         voice_confidence = vad.is_speech(windowed_data_unfiltered)
 
         # print(is_voice)
-        draw_arrow.drawVoice(screen, 0.0, voice_confidence[1], 0.0, voice_confidence[0])
+        draw_arrow.drawVoice(screen, voice_confidence[0], voice_confidence[2], voice_confidence[1], voice_confidence[3])
 
-        if channels_are_similar:
-            angle = None
-        else:
-            if window_energy_db[0] > window_energy_db[1]:
-                angle = 180
-            else:
-                angle = 0
+        angle = localize(window_energy[0], window_energy[2], window_energy[1], window_energy[3])
 
         draw_arrow.drawArrow(screen, angle)
         pygame.display.update()

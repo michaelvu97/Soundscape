@@ -26,7 +26,7 @@ def drawArrow(screen, theta):
     
     pygame.draw.line(screen, pygame.Color(0,0,0), (xCentre, yCentre), (x,y), 4) 
 
-def drawVoice(screen, forward, right, back, left):
+def drawVoice(screen, left, forward, right, back):
     left_pos = [250, 250]
     forward_pos = [300, 200]
     right_pos = [350, 250]
