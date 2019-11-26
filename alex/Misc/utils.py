@@ -15,7 +15,7 @@ def get_device_indices():
 
 def compute_energy(data_channels):
     if data_channels.ndim == 2:
-        return np.sum(np.square(data_channels), axis=1)
+        return np.sum(np.square(data_channels), axis=1, keepdims=True)
     else:
         return np.sum(np.square(data_channels))
 

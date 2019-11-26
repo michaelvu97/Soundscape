@@ -11,11 +11,11 @@ import time
 import draw_arrow
 from scipy.fftpack import fft
 import utils
-import sys
-sys.path.append("../../ML")
-from vad_test import VAD
+# import sys
+# sys.path.append("../../ML")
+# from vad_test import VAD
 from rVAD_custom import VoiceActivityDetector
-
+import live_calibration
 
 #rate, a = scipy.io.wavfile.read("/Users/alexmertens/Desktop/School/School/Capstone/code/Soundscape/alex/Sounds/Trimmed/honk mic 3 trimmed.wav")
 #rate, b = scipy.io.wavfile.read("/Users/alexmertens/Desktop/School/School/Capstone/code/Soundscape/alex/Sounds/Trimmed/honk mic 4 trimmed.wav")
@@ -39,7 +39,7 @@ def compute_energy(data_channels):
 
 form_1 = pyaudio.paInt16 # 16-bit resolution
 samp_rate = 44100 # 44.1kHz sampling rate
-chunk = 8192 # 2^12 samples for buffer
+chunk = 4196 #8192 # 2^12 samples for buffer
 height = 600
 width = 1000
 
@@ -53,11 +53,14 @@ RED =   (255,   0,   0)
 audio = pyaudio.PyAudio() # create pyaudio instantiation
 device_indexes = utils.get_device_indices()
 
+calibration = live_calibration.LiveCalibration(len(device_indexes))
+
 # Initialize butterworth filter
 nyq = 0.5 * samp_rate
-low = 100 / nyq
-high = 800 / nyq
-den, num = signal.butter(2, [low, high], btype='band')
+low = 300 / nyq
+high = 8000 / nyq
+den, num = signal.butter(2, [low, high], btype='bandpass')
+
 amp = 1
 size = [width, height]
 screen = pygame.display.set_mode(size)
@@ -78,10 +81,21 @@ while not done:
 
     screen.fill(BLACK)
 
-    data = [np.fromstring(stream.read(chunk, exception_on_overflow=False), dtype=np.int16).astype(np.float64) for stream in streams]
+    data = np.stack([np.fromstring(stream.read(chunk, exception_on_overflow=False), dtype=np.int16).astype(np.float64) for stream in streams])
+    
+    # Calibrate
+    calibration_mode = True
+    if (calibration_mode):
+        calibration.update(utils.compute_energy(data))
+        gain_correction = calibration.get_gain_correction()
+        print(gain_correction)
+        data_gain_corrected = data * gain_correction
+    else:
+        # Hardcoded calibration
+        data_gain_corrected = data * [[1.0],[1.20]]
 
     # Filtering
-    data_filtered = signal.filtfilt(den, num, data)
+    data_filtered = signal.filtfilt(den, num, data_gain_corrected)
 
     # Normalization
     data_filtered_normalized = data_filtered / 256
@@ -89,7 +103,7 @@ while not done:
     # energies = utils.compute_energy(data_filtered_normalized)
     # print("Energies: " + str(energies.astype(np.int32)))
 
-    length = min(len(data[0]), len(data[1]), len(data[2]), len(data[3]))
+    length = min([len(x) for x in data])
 
     steps = 1
     step_length = int(length / steps)
@@ -99,7 +113,7 @@ while not done:
         window_energy = utils.compute_energy(windowed_data)
 
         # Define variables from the algorithm
-        
+        """
         R1 = 7.5 
         m1 = window_energy[0] / window_energy[1]
         k1 = R1 * (m1 + 1) / (m1 - 1)
@@ -113,21 +127,12 @@ while not done:
         rootl2 = np.sqrt(l2)
     
         centre2 = k2 - R2
-        
-        # Vector of predictions of whether each channel is voice
-        is_voice = vad.is_speech(windowed_data)
-        print(is_voice)
-        draw_arrow.drawVoice(screen, is_voice[0], is_voice[2], is_voice[3], is_voice[1])
-        pygame.display.update()
-        # For now for testing, just examing channel 0 (A)
-        # if is_voice[0]:
-        #     print("VOICE")
-        # else:
-        #     print("NOT VOICE")
+        """
     
         #Solve for intersectin of circles source: http://paulbourke.net/geometry/circlesphere/
     
         #First get the distance between the circles and the radius of each circle
+        """
         d = math.sqrt((k1 - R2) ** 2 + (centre2 ** 2))
         r0 = rootl1
         r1 = rootl2
@@ -167,6 +172,8 @@ while not done:
             angle = np.arctan(y3_2 / x3_2)
     
         angle = 180 * angle / math.pi
+        """
+        draw_arrow.drawMicLevels(screen, window_energy)
     
     #    print("Circle center: ", k1)
     #    print("Circle radius: ", rootl1)
@@ -185,7 +192,33 @@ while not done:
     #    print("Intersection 1:", x3_1, y3_1)
     #    print("Intersection 2:", x3_2, y3_2)
     #    print()
-    
-        # print("Angle of Sound:", angle)
+
+        # Localization using energy difference
+
+        window_energy_db = 20.0 * np.log1p(window_energy)
+
+        # percent_difference_to_register_angle = 0.004
+
+        # diff = 2 * np.abs(window_energy_db[0] - window_energy_db[1]) / np.abs(window_energy[0] + window_energy_db[1])
+        # print(window_energy_db[0] - window_energy_db[1])
+        # channels_are_similar = diff < percent_difference_to_register_angle
+        diff_threshold_db = 10.0
+        channels_are_similar = np.abs(window_energy_db[0] - window_energy_db[1]) < diff_threshold_db
+
+        print("diff: " + str(np.abs(window_energy_db[0] - window_energy_db[1])) + " , threshold: " + str(diff_threshold_db))
+
+        # Vector of predictions of whether each channel is voice
+        is_voice = vad.is_speech(windowed_data)
+        # print(is_voice)
+        draw_arrow.drawVoice(screen, False, is_voice[1], False, is_voice[0])
+
+        if channels_are_similar:
+            angle = None
+        else:
+            if window_energy_db[0] > window_energy_db[1]:
+                angle = 180
+            else:
+                angle = 0
+
         draw_arrow.drawArrow(screen, angle)
         pygame.display.update()
