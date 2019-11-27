@@ -35,7 +35,7 @@ def localize(channel_left_energy, channel_forward_energy, channel_right_energy, 
     right_db = 20.0 * np.log1p(channel_right_energy)
     back_db = 20.0 * np.log1p(channel_back_energy)
 
-    threshold_db = 10.0
+    threshold_db = 13.0
 
     # NOTE: This is ultra stupid
 
@@ -47,41 +47,36 @@ def localize(channel_left_energy, channel_forward_energy, channel_right_energy, 
     is_left = diff_left_right > threshold_db
     is_right = -diff_left_right > threshold_db
 
-    lr_neutral = not is_left and not is_right
-    fb_neutral = not is_forward and not is_back
-
-    if lr_neutral and fb_neutral:
-        return None
-
-    if lr_neutral:
-        # Must be f/b biased
-        if is_forward:
-            return 90
-
-        # Backward
-        return 270
-
-    if fb_neutral:
-        # Must be lr biased
-        if is_right:
-            return 0
-
-        # Must be left
-        return 180
-
-    # Both directions are biased
-    # Just dummy switch through them
     if is_forward:
-        if is_left:
-            return 90 + 45
-        else:
-            return 45
+        base_angle = 90
+        if is_right:
+            base_angle -= 45
+        elif is_left:
+            base_angle += 45
+        return base_angle
+    elif is_back:
+        base_angle = 270
+        if is_right:
+            base_angle += 45
+        elif is_left:
+            base_angle -= 45
+        return base_angle
+    elif is_right:
+        base_angle = 0
+        if is_forward:
+            base_angle += 45
+        elif is_back:
+            base_angle += 360 - 45
+        return base_angle
+    elif is_left:
+        base_angle = 180
+        if is_forward:
+            base_angle -= 45
+        elif is_back:
+            base_angle += 45
+        return base_angle
     else:
-        if is_left:
-            return 180 + 45
-        else:
-            return 360 - 45
-
+        return None
 
 form_1 = pyaudio.paInt16 # 16-bit resolution
 samp_rate = 44100 # 44.1kHz sampling rate
@@ -132,13 +127,12 @@ while not done:
     # Calibrate
     calibration_mode = False
     if (calibration_mode):
-        calibration.update(utils.compute_energy(data))
-        gain_correction = calibration.get_gain_correction()
+        gain_correction = calibration.get_gain_correction(utils.compute_energy(data))
         print(gain_correction)
         data_gain_corrected = data * gain_correction
     else:
         # Hardcoded calibration
-        data_gain_corrected = data * [[1.0999807 ],[1.40],[1.3398968 ],[1.        ]]
+        data_gain_corrected = data * [[1.1041753],[1.2040477],[1.1236639],[1.       ]]
 
     # Filtering
     data_filtered = signal.filtfilt(den, num, data_gain_corrected)
