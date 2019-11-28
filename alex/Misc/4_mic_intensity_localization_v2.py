@@ -29,6 +29,56 @@ import live_calibration
 #
 #length = min(len(a), len(b), len(c))
 
+def get_left(channels):
+    return channels[0]
+def get_right(channels):
+    return channels[1]
+def get_forward(channels):
+    return channels[2]
+def get_back(channels):
+    return channels[3]
+
+def localize2(energy):
+    """
+    Energy order: [A, B, C, D] = [left, right, forward, backward]
+    """
+    max_energy = np.max(energy)
+    relative_db = np.log(energy / max_energy) # Will crash with zeros
+
+    threshold_db = -0.5
+
+    is_loud = relative_db > threshold_db
+
+    left_loud = get_left(is_loud)
+    right_loud = get_right(is_loud)
+    forward_loud = get_forward(is_loud)
+    backward_loud = get_back(is_loud)
+
+    # Unhandled case: opposite mics on the same axis are loud (probably because of 2 sound sources)
+    if (left_loud and right_loud) or (forward_loud and backward_loud):
+        return None
+
+    # Lookup logic
+    if forward_loud:
+        if left_loud:
+            return 90 + 45
+        elif right_loud:
+            return 90 - 45
+        else:
+            return 90
+    elif backward_loud:
+        if left_loud:
+            return 270 - 45
+        elif right_loud:
+            return 270 + 45
+        else:
+            return 270
+    else:
+        if left_loud:
+            return 180
+        else:
+            return 0
+
 def localize(channel_left_energy, channel_forward_energy, channel_right_energy, channel_back_energy):
     left_db = 20.0 * np.log1p(channel_left_energy)
     forward_db = 20.0 * np.log1p(channel_forward_energy)
@@ -243,7 +293,7 @@ while not done:
         # print(is_voice)
         draw_arrow.drawVoice(screen, voice_confidence[0], voice_confidence[2], voice_confidence[1], voice_confidence[3])
 
-        angle = localize(window_energy[0], window_energy[2], window_energy[1], window_energy[3])
+        angle = localize2(window_energy)
 
         draw_arrow.drawArrow(screen, angle)
         pygame.display.update()
