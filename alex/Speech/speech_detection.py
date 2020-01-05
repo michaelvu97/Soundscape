@@ -32,7 +32,7 @@ if __name__ == "__main__":
         with sr.AudioFile(testwav) as source: 
             audio = r.record(source)
             results = recognize(audio)
-            if(expectedval == results)
+            if(expectedval == results):
                 print("test passed")
             else 
                 print(testwav)
@@ -53,7 +53,7 @@ if __name__ == "__main__":
             audio = r.record(source)
             results = has_speech(audio)
             if(expectedval == results)
-                print("test passed")
+                print("test passed"):
             else 
                 print(testwav)
                 print("expected = " + str(expectedval))
