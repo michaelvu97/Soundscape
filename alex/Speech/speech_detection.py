@@ -3,6 +3,8 @@
 import speech_recognition as sr;
 
 r = sr.Recognizer()
+print(r.energy_threshold)
+r.energy_threshold = r.energy_threshold * 10;
 
 def has_speech(audio):
     return True if recognize(audio) is not None else False
@@ -24,6 +26,7 @@ if __name__ == "__main__":
         ["test2.wav", None]
     ];
     
+    i = 1;
     for test in wordtests:
         
         testwav = test[0]
@@ -33,12 +36,14 @@ if __name__ == "__main__":
             audio = r.record(source)
             results = recognize(audio)
             if(expectedval == results):
-                print("test passed")
+                print("test " + str(i) + " passed")
             else: 
+                print("test " + str(i) + " failed")
                 print(testwav)
                 print("expected = " + str(expectedval))
                 print("results = " + str(results))
- 
+        
+        i = i + 1;
     binarytests = [
         ["btb1.wav", False],
         ["btb2.wav", True]
@@ -53,10 +58,11 @@ if __name__ == "__main__":
             audio = r.record(source)
             results = has_speech(audio)
             if(expectedval == results):
-                print("test passed")
+                print("test " + str(i) + " passed")
             else: 
+                print("test " + str(i) + " failed")
                 print(testwav)
                 print("expected = " + str(expectedval))
                 print("results = " + str(results))
- 
+        i = i + 1
 
