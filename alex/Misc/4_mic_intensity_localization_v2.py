@@ -162,6 +162,17 @@ while not done:
 
         # Define variables from the algorithm
         """
+
+
+        1   0
+
+        3   2
+
+        0-1
+        0-2
+        2-3
+        1-3
+
         R1 = 7.5 
         m1 = window_energy[0] / window_energy[1]
         k1 = R1 * (m1 + 1) / (m1 - 1)
@@ -175,6 +186,26 @@ while not done:
         rootl2 = np.sqrt(l2)
     
         centre2 = k2 - R2
+
+
+        R3 = 7.5
+        m3 = window_energy[2] / window_energy[3]
+        k3 = R2 * (m3 + 1) / (m3 - 1)
+        l3 = (1 / (m3 - 1)) * ((4*m3*R3*R3)/(m3-1))
+        rootl2 = np.sqrt(l3)
+    
+        centre3 = k2 - R2
+
+
+        R4 = 7.5
+        m4 = window_energy[1] / window_energy[3]
+        k4 = R4 * (m4 + 1) / (m4 - 1)
+        l4 = (1 / (m4 - 1)) * ((4*m4*R4*R4)/(m4-1))
+        rootl2 = np.sqrt(l4)
+    
+        centre4 = k2 - R2
+
+
         """
     
         #Solve for intersectin of circles source: http://paulbourke.net/geometry/circlesphere/
