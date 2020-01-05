@@ -19,12 +19,12 @@ def recognize(audio):
 
 if __name__ == "__main__":
     print("speech recog version: " + sr.__version__)
-    tests = [
-                ["test1.wav", "all the way"],
-                ["test2.wav", None]
-            ];
+    wordtests = [
+        ["test1.wav", "all the way"],
+        ["test2.wav", None]
+    ];
     
-    for test in tests:
+    for test in wordtests:
         
         testwav = test[0]
         expectedval = test[1]
@@ -35,4 +35,22 @@ if __name__ == "__main__":
             print("expected = " + str(expectedval))
             print("results = " + str(results))
             assert(expectedval == results) 
-            
+    
+    binarytests = [
+        ["btb1.wav", False],
+        ["btb2.wav", True]
+    ];
+
+    for test in binarytests:
+        
+        testwav = test[0]
+        expectedval = test[1]
+
+        with sr.AudioFile(testwav) as source: 
+            audio = r.record(source)
+            results = has_speech(audio)
+            print("expected = " + str(expectedval))
+            print("results = " + str(results))
+            assert(expectedval == results) 
+ 
+
