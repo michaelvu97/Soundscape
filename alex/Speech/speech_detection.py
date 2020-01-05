@@ -20,7 +20,8 @@ def recognize(audio):
 if __name__ == "__main__":
     print("speech recog version: " + sr.__version__)
     tests = [
-                ["test1.wav", ["all", "the", "way"] ]
+                ["test1.wav", "all the way"] ],
+                ["test2.wav", None]
             ];
     
     for test in tests:
