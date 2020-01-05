@@ -32,10 +32,13 @@ if __name__ == "__main__":
         with sr.AudioFile(testwav) as source: 
             audio = r.record(source)
             results = recognize(audio)
-            print("expected = " + str(expectedval))
-            print("results = " + str(results))
-            assert(expectedval == results) 
-    
+            if(expectedval == results)
+                print("test passed")
+            else 
+                print(testwav)
+                print("expected = " + str(expectedval))
+                print("results = " + str(results))
+ 
     binarytests = [
         ["btb1.wav", False],
         ["btb2.wav", True]
@@ -49,8 +52,11 @@ if __name__ == "__main__":
         with sr.AudioFile(testwav) as source: 
             audio = r.record(source)
             results = has_speech(audio)
-            print("expected = " + str(expectedval))
-            print("results = " + str(results))
-            assert(expectedval == results) 
+            if(expectedval == results)
+                print("test passed")
+            else 
+                print(testwav)
+                print("expected = " + str(expectedval))
+                print("results = " + str(results))
  
 
