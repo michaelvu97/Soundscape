@@ -3,8 +3,8 @@
 import speech_recognition as sr;
 
 r = sr.Recognizer()
+r.energy_threshold = 10000;
 print(r.energy_threshold)
-r.energy_threshold = r.energy_threshold * 10;
 
 def has_speech(audio):
     return True if recognize(audio) is not None else False
