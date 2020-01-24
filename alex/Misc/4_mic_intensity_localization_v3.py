@@ -16,6 +16,7 @@ import utils
 # from vad_test import VAD
 from rVAD_custom import VoiceActivityDetector
 import live_calibration
+from angle_smoother import AngleSmoother
 
 
 def get_left(channels):
@@ -32,17 +33,27 @@ def localize(energy):
     Energy order: clockwise starting at 3 o clock (0 degrees)
     """
     max_energy = np.max(energy)
+    if (max_energy <= 0.00001):
+        max_energy = 0.000001
     relative_db = np.log(energy / max_energy) # Will crash with zeros
 
+    # print(relative_db)
     threshold_db = -0.5
 
     is_loud = relative_db > threshold_db
+
+    if (np.sum(is_loud) > 2):
+        return None # Experimental
 
 #    left_loud = get_left(is_loud)
 #    right_loud = get_right(is_loud)
 #    forward_loud = get_forward(is_loud)
 #    backward_loud = get_back(is_loud)
-    loud = [0,0]
+
+    # temp
+    num_devices = 5
+
+    loud = [0,0,0,0,0]
     for n in range(num_devices):
         loud[n] = is_loud[n]
 
@@ -71,7 +82,6 @@ def localize(energy):
     #    else:
     #        return 0
 
-    
     for n in range(num_devices):
         angle = n * (360 / (num_devices))
         incr = 360 / (2*num_devices)
@@ -94,11 +104,12 @@ def localize(energy):
 
 form_1 = pyaudio.paInt16 # 16-bit resolution
 samp_rate = 44100 # 44.1kHz sampling rate
-chunk = 4196 #8192 # 2^12 samples for buffer
+chunk = 2048 #8192 # 2^12 samples for buffer
 height = 600
 width = 1000
 
 vad = VoiceActivityDetector(samp_rate)
+smoother = AngleSmoother();
 
 BLACK = (  0,   0,   0)
 WHITE = (255, 255, 255)
@@ -113,8 +124,10 @@ calibration = live_calibration.LiveCalibration(len(device_indexes))
 
 # Initialize butterworth filter
 nyq = 0.5 * samp_rate
-low = 300 / nyq
-high = 8000 / nyq
+# low = 300 / nyq
+# high = 8000 / nyq
+low = 1000 / nyq
+high = 6000 / nyq
 den, num = signal.butter(2, [low, high], btype='bandpass')
 
 amp = 1
@@ -127,6 +140,8 @@ streams = [
                     frames_per_buffer=chunk)
         for device_index in device_indexes
     ]
+
+print (len(streams))
 
 done = False
 while not done:    
@@ -147,8 +162,9 @@ while not done:
         data_gain_corrected = data * gain_correction
     else:
         # Hardcoded calibration for 2 mics atm
-        #data_gain_corrected = data * [[1.1041753],[1.2040477],[1.1236639],[1.       ]]
-        data_gain_corrected = data * [[1.],[1.8]]  
+        data_gain_corrected = data * [[1.182931 ],[1.422893 ],[1.2982392],[1.1       ],[1.4089305]]
+        # data_gain_corrected = data * [[1.],[1.8]]  
+        # data_gain_corrected = data
 
     # Filtering
     data_filtered = signal.filtfilt(den, num, data_gain_corrected)
@@ -183,6 +199,12 @@ while not done:
         #draw_arrow.drawVoice(screen, voice_confidence[0], voice_confidence[2])
 
         angle = localize(window_energy)
+        smoother.update(angle)
+        angle = smoother.getSmoothedAngle()
+
+        # OFfset the angle to align the 1st mic with forward
+        if angle is not None:
+            angle = (angle + 90) % 360
 
         draw_arrow.drawArrow(screen, angle)
         pygame.display.update()
