@@ -3,13 +3,20 @@ import math
 
 class AngleSmoother():
     def __init__(self):
-        self.last_angle = None
-        self.curr_angle = None
+        self.last_angle = 0.0
+        self.last_last_angle = 0.0
+        self.curr_angle = 0.0
         self.tolerance_degrees = 90
         self.hold_time = 0
-        self.hold_time_threshold = 2
+        self.hold_time_threshold = 1
+        self.weight1 = 0.15
+        self.weight2 = 0.1
 
     def update(self, curr_angle_hypothesis):
+    
+        if(curr_angle_hypothesis == None):
+            return None
+        self.last_last_angle = self.last_angle
         self.last_angle = self.curr_angle
         self.curr_angle = curr_angle_hypothesis
 
@@ -17,11 +24,37 @@ class AngleSmoother():
             self.hold_time = 0 # Reset
             return
 
-        delta_ang = abs(self.last_angle - self.curr_angle) % 360
-        if delta_ang >= 180:
-            delta_ang = 360 - delta_ang
+       # delta_ang = abs(self.last_angle - self.curr_angle) % 360
+       # if delta_ang >= 180:
+       #     delta_ang = 360 - delta_ang
 
-        if delta_ang < self.tolerance_degrees:
+
+        temp_curr = 0
+        temp_last = self.last_angle - self.curr_angle
+        temp_last_last = self.last_last_angle - self.curr_angle
+
+        if(temp_last > 180):
+            temp_last = temp_last - 360
+
+        if(temp_last_last > 180):
+            temp_last_last = temp_last_last - 360
+
+        average = self.weight1*temp_last + self.weight2*temp_last_last
+        average = average + self.curr_angle
+        if(average < 0):
+            average = average + 360
+
+        guess = self.curr_angle 
+        if(abs(average - self.last_last_angle) > 36):
+            guess = self.curr_angle 
+
+
+        self.curr_angle = average
+        print(average)
+        print(self.last_last_angle)
+        print()
+
+        if 10 < self.tolerance_degrees:
             self.hold_time += 1
         else:
             self.hold_time = 0
@@ -32,5 +65,5 @@ class AngleSmoother():
         if activated:
             return self.curr_angle
         else:
-            return None
+            return self.curr_angle
 
