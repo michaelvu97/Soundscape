@@ -3,18 +3,26 @@
 import speech_recognition as sr;
 
 r = sr.Recognizer()
-r.energy_threshold = 10000;
+#r.energy_threshold = 1000;
 print(r.energy_threshold)
 
 def has_speech(audio):
-    return True if recognize(audio) is not None else False
+    #return True if recognize(audio) is not None else False
+    words = recognize(audio)
+    if(words is None):
+        return False
+    print("words " + words)
+    return True
 
 def recognize(audio):
     try:
-        return r.recognize_sphinx(audio);
+        return r.recognize_google(audio);
     except sr.UnknownValueError:
+        #print("unknown value error")
         return None
     except sr.RequestError as e:
+        print("request error")
+        print(e)
         return None
 
 
@@ -23,7 +31,8 @@ if __name__ == "__main__":
     print("speech recog version: " + sr.__version__)
     wordtests = [
         ["test1.wav", "all the way"],
-        ["test2.wav", None]
+        ["test2.wav", None],
+        ["test3.wav", "mert say something ass"]
     ];
     
     i = 1;
