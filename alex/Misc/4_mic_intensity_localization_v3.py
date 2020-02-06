@@ -126,7 +126,7 @@ calibration = live_calibration.LiveCalibration(len(device_indexes))
 nyq = 0.5 * samp_rate
 # low = 300 / nyq
 # high = 8000 / nyq
-low = 1000 / nyq
+low = 2700 / nyq
 high = 6000 / nyq
 den, num = signal.butter(2, [low, high], btype='bandpass')
 
