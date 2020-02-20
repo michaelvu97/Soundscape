@@ -5,7 +5,7 @@ class LiveCalibration():
 
 
     def __init__(self, num_channels):
-        self.base_rate = 0.0005 # The weighting of how much to adapt to new energy levels.
+        self.base_rate = 0.005 # The weighting of how much to adapt to new energy levels.
         self.num_channels = num_channels
         self.gain = np.ones((num_channels, 1), dtype=np.float32)
 
