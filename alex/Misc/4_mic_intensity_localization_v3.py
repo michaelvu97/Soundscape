@@ -14,6 +14,7 @@ import utils
 # import sys
 # sys.path.append("../../ML")
 # from vad_test import VAD
+from speech_detection import SpeechDetector
 from rVAD_custom import VoiceActivityDetector
 import live_calibration
 from angle_smoother import AngleSmoother
@@ -108,7 +109,10 @@ chunk = 2048 #8192 # 2^12 samples for buffer
 height = 600
 width = 1000
 
-vad = VoiceActivityDetector(samp_rate)
+#vad = VoiceActivityDetector(samp_rate)
+
+vad = SpeechDetector();
+
 smoother = AngleSmoother();
 
 BLACK = (  0,   0,   0)
