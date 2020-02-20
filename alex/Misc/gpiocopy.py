@@ -1,0 +1,100 @@
+import RPi.GPIO as GPIO
+import time
+GPIO.setmode(GPIO.BCM)
+GPIO.setwarnings(False)
+
+def LED_Init():
+    print("Initializing LEDs")
+    GPIO.setup(2,GPIO.OUT)
+    GPIO.setup(3,GPIO.OUT)
+    GPIO.setup(14,GPIO.OUT)
+    GPIO.setup(17,GPIO.OUT)
+    GPIO.setup(27,GPIO.OUT)
+    GPIO.setup(22,GPIO.OUT)
+    #Set all LEDs to off initially
+    GPIO.setup(2,GPIO.LOW)
+    GPIO.setup(3,GPIO.LOW)
+    GPIO.setup(14,GPIO.LOW)
+    GPIO.setup(17,GPIO.LOW)
+    GPIO.setup(27,GPIO.LOW)
+    GPIO.setup(22,GPIO.LOW)
+def Display_Direction (direction):
+    if direction == None:
+        return
+    if direction <= 18:
+        GPIO.setup(2,GPIO.LOW)
+        GPIO.setup(3,GPIO.LOW)
+        GPIO.setup(14,GPIO.LOW)
+        GPIO.setup(17,GPIO.LOW)
+        GPIO.setup(27,GPIO.LOW)
+        GPIO.setup(22,GPIO.LOW)
+    elif direction <= 54:
+        GPIO.setup(2,GPIO.LOW)
+        GPIO.setup(3,GPIO.LOW)
+        GPIO.setup(14,GPIO.HIGH)
+        GPIO.setup(17,GPIO.LOW)
+        GPIO.setup(27,GPIO.LOW)
+        GPIO.setup(22,GPIO.LOW)
+    elif direction <= 90:
+        GPIO.setup(2,GPIO.LOW)
+        GPIO.setup(3,GPIO.HIGH)
+        GPIO.setup(14,GPIO.HIGH)
+        GPIO.setup(17,GPIO.LOW)
+        GPIO.setup(27,GPIO.LOW)
+        GPIO.setup(22,GPIO.LOW)
+    elif direction <= 126:
+        GPIO.setup(2,GPIO.HIGH)
+        GPIO.setup(3,GPIO.HIGH)
+        GPIO.setup(14,GPIO.LOW)
+        GPIO.setup(17,GPIO.LOW)
+        GPIO.setup(27,GPIO.LOW)
+        GPIO.setup(22,GPIO.LOW)
+    elif direction <= 162:
+        GPIO.setup(2,GPIO.HIGH)
+        GPIO.setup(3,GPIO.LOW)
+        GPIO.setup(14,GPIO.LOW)
+        GPIO.setup(17,GPIO.LOW)
+        GPIO.setup(27,GPIO.LOW)
+        GPIO.setup(22,GPIO.LOW)
+    elif direction <= 198:
+        GPIO.setup(2,GPIO.HIGH)
+        GPIO.setup(3,GPIO.LOW)
+        GPIO.setup(14,GPIO.LOW)
+        GPIO.setup(17,GPIO.LOW)
+        GPIO.setup(27,GPIO.LOW)
+        GPIO.setup(22,GPIO.HIGH)
+    elif direction <= 234:
+        GPIO.setup(2,GPIO.LOW)
+        GPIO.setup(3,GPIO.LOW)
+        GPIO.setup(14,GPIO.LOW)
+        GPIO.setup(17,GPIO.LOW)
+        GPIO.setup(27,GPIO.LOW)
+        GPIO.setup(22,GPIO.HIGH)
+    elif direction <= 270:
+        GPIO.setup(2,GPIO.LOW)
+        GPIO.setup(3,GPIO.LOW)
+        GPIO.setup(14,GPIO.LOW)
+        GPIO.setup(17,GPIO.LOW)
+        GPIO.setup(27,GPIO.HIGH)
+        GPIO.setup(22,GPIO.HIGH)
+    elif direction <= 306:
+        GPIO.setup(2,GPIO.LOW)
+        GPIO.setup(3,GPIO.LOW)
+        GPIO.setup(14,GPIO.LOW)
+        GPIO.setup(17,GPIO.HIGH)
+        GPIO.setup(27,GPIO.HIGH)
+        GPIO.setup(22,GPIO.LOW)
+    elif direction <= 342:
+        GPIO.setup(2,GPIO.LOW)
+        GPIO.setup(3,GPIO.LOW)
+        GPIO.setup(14,GPIO.LOW)
+        GPIO.setup(17,GPIO.HIGH)
+        GPIO.setup(27,GPIO.LOW)
+        GPIO.setup(22,GPIO.LOW)
+    elif direction <= 360:
+        GPIO.setup(2,GPIO.LOW)
+        GPIO.setup(3,GPIO.LOW)
+        GPIO.setup(14,GPIO.LOW)
+        GPIO.setup(17,GPIO.LOW)
+        GPIO.setup(27,GPIO.LOW)
+        GPIO.setup(22,GPIO.LOW)

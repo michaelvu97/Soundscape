@@ -50,9 +50,9 @@ class AngleSmoother():
 
 
         self.curr_angle = average
-        print(average)
-        print(self.last_last_angle)
-        print()
+        #print(average)
+        #print(self.last_last_angle)
+        #print()
 
         if 10 < self.tolerance_degrees:
             self.hold_time += 1
