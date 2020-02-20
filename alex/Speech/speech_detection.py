@@ -6,34 +6,36 @@ r = sr.Recognizer()
 #r.energy_threshold = 1000;
 print(r.energy_threshold)
 
-def has_speech(audios):
-    if(type(audios) == type([])):
-        outputs = []
-        for a in audios:
-            outputs.append(signal_has_speech(a))
-        return outputs
-    else:
-        return signal_has_speech
-
-def signal_has_speech(audio):
-    #return True if recognize(audio) is not None else False
-    words = recognize(audio)
-    if(words is None):
-        return False
-    return True
-
-
-def recognize(audio):
-    try:
-        return r.recognize_google(audio);
-    except sr.UnknownValueError:
-        #print("unknown value error")
-        return None
-    except sr.RequestError as e:
-        print("request error")
-        print(e)
-        return None
-
+class SpeechDetector:   
+	
+	def is_speech(self, audios):
+	    if(type(audios) == type([])):
+	        outputs = []
+	        for a in audios:
+	            outputs.append(self.signal_is_speech(a))
+	        return outputs
+	    else:
+	        return signal_is_speech
+	
+	def signal_is_speech(self, audio):
+	    #return True if recognize(audio) is not None else False
+	    words = self.recognize(audio)
+	    if(words is None):
+	        return False
+	    return True
+	
+	
+	def recognize(self, audio):
+	    try:
+	        return r.recognize_google(audio);
+	    except sr.UnknownValueError:
+	        #print("unknown value error")
+	        return None
+	    except sr.RequestError as e:
+	        print("request error")
+	        print(e)
+	        return None
+	
 
 
 if __name__ == "__main__":
@@ -44,6 +46,8 @@ if __name__ == "__main__":
         ["test3.wav", "mert say something ass"]
     ];
     
+    vad =  SpeechDetector();
+
     i = 1;
     for test in wordtests:
         
@@ -52,7 +56,7 @@ if __name__ == "__main__":
 
         with sr.AudioFile(testwav) as source: 
             audio = r.record(source)
-            results = recognize(audio)
+            results = vad.recognize(audio)
             if(expectedval == results):
                 print("test " + str(i) + " passed")
             else: 
@@ -79,7 +83,7 @@ if __name__ == "__main__":
             audios.append(audio)
             expected.append(expectedval)
 
-    results = has_speech(audios)
+    results = vad.is_speech(audios)
     for j in range(0, len(results)):
         expectedval = expected[j]
         result = results[j]
