@@ -1,4 +1,7 @@
 #!/Library/Frameworks/Python.framework/Versions/3.6/bin/python3
+import time
+import threading
+import speech_recognition as sr;
 import numpy as np
 import math
 import scipy.io.wavfile
@@ -19,6 +22,7 @@ from rVAD_custom import VoiceActivityDetector
 import live_calibration
 from angle_smoother import AngleSmoother
 
+from speech_detection import SpeechDetector
 
 def get_left(channels):
     return channels[0]
@@ -52,9 +56,9 @@ def localize(energy):
 #    backward_loud = get_back(is_loud)
 
     # temp
-    num_devices = 5
+    num_devices = 4
 
-    loud = [0,0,0,0,0]
+    loud = [0,0,0,0]
     for n in range(num_devices):
         loud[n] = is_loud[n]
 
@@ -109,9 +113,9 @@ chunk = 2048 #8192 # 2^12 samples for buffer
 height = 600
 width = 1000
 
-#vad = VoiceActivityDetector(samp_rate)
+vad = VoiceActivityDetector(samp_rate)
 
-vad = SpeechDetector();
+#vad = SpeechDetector();
 
 smoother = AngleSmoother();
 
@@ -122,6 +126,8 @@ GREEN = (  0, 255,   0)
 RED =   (255,   0,   0)
 audio = pyaudio.PyAudio() # create pyaudio instantiation
 device_indexes = utils.get_device_indices()
+actual_device_indexes = device_indexes;
+device_indexes = device_indexes[1:]
 num_devices = len(device_indexes)
 
 calibration = live_calibration.LiveCalibration(len(device_indexes))
@@ -138,6 +144,8 @@ amp = 1
 size = [width, height]
 screen = pygame.display.set_mode(size)
 
+
+
 streams = [
     audio.open(format = form_1,rate = samp_rate, channels = 1, \
                     input_device_index = device_index, input = True, \
@@ -147,6 +155,31 @@ streams = [
 
 print (len(streams))
 
+mic = sr.Microphone(device_index=actual_device_indexes[0])
+recog = sr.Recognizer()
+spd = SpeechDetector();
+
+def callback(recognizer, audio):
+    try:
+        print("Google Speech Recognition thinks you said " + recognizer.recognize_google(audio))
+    except sr.UnknownValueError:
+        print("Google Speech Recognition could not understand audio")
+    except sr.RequestError as e:
+        print("Could not request results from Google Speech Recognition service; {0}".format(e))
+
+def thread_function(m, r):
+    print( "hi im the thread")
+    r.energy_threshold = 2000
+    while True:
+	    with m as source:
+	        audio = r.listen(source=source, phrase_time_limit=1)
+	    callback(r, audio)
+	
+spdthread = threading.Thread(target=thread_function, args=(mic,recog))
+spdthread.start()
+
+
+
 done = False
 while not done:    
 
@@ -154,7 +187,7 @@ while not done:
         if event.type == pygame.QUIT:
             done=True
 
-    screen.fill(BLACK)
+    screen.fill(BLACK)    
 
     data = np.stack([np.fromstring(stream.read(chunk, exception_on_overflow=False), dtype=np.int16).astype(np.float64) for stream in streams])
     
@@ -166,7 +199,7 @@ while not done:
         data_gain_corrected = data * gain_correction
     else:
         # Hardcoded calibration for 2 mics atm
-        data_gain_corrected = data * [[1.182931 ],[1.422893 ],[1.2982392],[1.1       ],[1.4089305]]
+        data_gain_corrected = data * [[1.422893 ],[1.2982392],[1.1       ],[1.4089305]]
         # data_gain_corrected = data * [[1.],[1.8]]  
         # data_gain_corrected = data
 
