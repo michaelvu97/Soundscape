@@ -10,6 +10,42 @@ import matplotlib.pyplot as plt
 
 NUM_FEATURES = 3
 
+def MergeData(window_size):
+    file_list = [
+        "./room-44100"
+    ]
+
+    wavs = np.zeros(window_size)
+    labels = np.zeros(window_size)
+    for file in file_list:
+        rate, wav_data = scipy.io.wavfile.read(file + ".wav")
+        y_labels = np.load(file + ".npy").astype(np.float32)
+
+        if rate != 44100:
+            print("input file does not have 44.1kHz sample rate: " + file)
+            return None
+
+        min_length = min(len(y_labels), len(wav_data))
+        y_labels = y_labels[:min_length]
+        wav_data = wav_data[:min_length].astype(np.float32)
+
+        padding = min_length % window_size
+        if padding == 0:
+            padding = window_size
+
+        wav_data = np.append(wav_data, np.zeros(padding))
+        y_labels = np.append(y_labels, np.zeros(padding))
+
+        if len(wav_data) != len(y_labels):
+            print("wav/y_label length mismatch")
+            return None
+
+        wavs = np.append(wavs, wav_data)
+        labels = np.append(labels, y_labels)
+    print("data loaded")
+    return (wavs, labels)
+
+
 # def FrameToFeatures(frame_time_domain):
 #     frame_length = len(frame_time_domain)
 #     frame_time_domain = np.array(frame_time_domain).astype(np.float32)
@@ -85,30 +121,15 @@ def LabelledFileToTrainingSamples(sound_data, labels, window_size, stride, sampl
     return results_x, np.expand_dims(np.array(results_y).astype(np.float32), 1)
 
 if __name__ == "__main__":
-    rate, wav_data = scipy.io.wavfile.read("room-44100.wav")
-    y_labels = np.load("room.npy").astype(np.float32)
+    SAMPLE_RATE = 44100
+    WINDOW_SIZE = 2048
 
-    print("data loaded")
-
-    # Fix off-by-one errors
-    min_length = min(len(y_labels), len(wav_data))
-    wav_data = wav_data[:min_length].astype(np.float32)
-
-    # add some noise to the input
-    # wav_data = wav_data + 25.0 * np.random.normal(size=min_length)
-
-    y_labels = y_labels[:min_length]
-
-    # Take the first n minutes of data
-    # start = 44100 * 60 * 20
-    # end = 44100 * 60 * 22
-    # wav_data = wav_data[start:end]
-    # y_labels = y_labels[start:end]
+    x_data, y_data = MergeData(WINDOW_SIZE)
 
     # Transform to windowed
 
-    print(len(y_labels))
-    percentage = np.mean(y_labels)
+    print(len(y_data))
+    percentage = np.mean(y_data)
     print("voice percentage: " + str(percentage))
     
     def GetModel():
@@ -120,12 +141,10 @@ if __name__ == "__main__":
 
     model = GetModel()
 
-    SAMPLE_RATE = 44100
-    WINDOW_SIZE = 2048
     STRIDE = int(WINDOW_SIZE / 2)
-    x_train, y_train = LabelledFileToTrainingSamples(wav_data, np.reshape(y_labels, [-1]), WINDOW_SIZE, STRIDE, SAMPLE_RATE)
+    x_train, y_train = LabelledFileToTrainingSamples(x_data, np.reshape(y_data, [-1]), WINDOW_SIZE, STRIDE, SAMPLE_RATE)
 
-    print(np.mean(y_train))
+    print("voice frame percentage: " + str(np.mean(y_train)))
 
     print("Fitting model on training data")
     history = model.fit(x_train, y_train, epochs=100, validation_split=0.2)
