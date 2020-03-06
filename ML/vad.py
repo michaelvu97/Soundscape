@@ -8,33 +8,47 @@ import re
 import h5py
 import matplotlib.pyplot as plt
 
+NUM_HISTORY = 3
 NUM_FEATURES = 3
 
 def MergeData(window_size):
     file_list = [
-        "./room-44100"
+        "./sound_files/room-44100"
+        #,"./sound_files/no_speech"
     ]
 
     wavs = np.zeros(window_size)
     labels = np.zeros(window_size)
     for file in file_list:
         rate, wav_data = scipy.io.wavfile.read(file + ".wav")
-        y_labels = np.load(file + ".npy").astype(np.float32)
-
+        print(file)
         if rate != 44100:
             print("input file does not have 44.1kHz sample rate: " + file)
             return None
 
-        min_length = min(len(y_labels), len(wav_data))
-        y_labels = y_labels[:min_length]
-        wav_data = wav_data[:min_length].astype(np.float32)
+        if(file != "./sound_files/no_speech"):
+            y_labels = np.load(file + ".npy").astype(np.float32)
 
-        padding = min_length % window_size
-        if padding == 0:
-            padding = window_size
+            min_length = min(len(y_labels), len(wav_data))
+            y_labels = y_labels[:min_length]
+            wav_data = wav_data[:min_length].astype(np.float32)
 
-        wav_data = np.append(wav_data, np.zeros(padding))
-        y_labels = np.append(y_labels, np.zeros(padding))
+            padding = min_length % window_size
+            if padding == 0:
+                padding = window_size
+
+            wav_data = np.append(wav_data, np.zeros(padding))
+            y_labels = np.append(y_labels, np.zeros(padding))
+        else:
+            min_length = len(wav_data)
+            wav_data = wav_data[:min_length].astype(np.float32)
+
+            padding = min_length % window_size
+            if padding == 0:
+                padding = window_size
+
+            wav_data = np.append(wav_data, np.zeros(padding))
+            y_labels = np.zeros(len(wav_data))
 
         if len(wav_data) != len(y_labels):
             print("wav/y_label length mismatch")
@@ -42,6 +56,7 @@ def MergeData(window_size):
 
         wavs = np.append(wavs, wav_data)
         labels = np.append(labels, y_labels)
+
     print("data loaded")
     return (wavs, labels)
 
@@ -105,13 +120,32 @@ def LabelledFileToTrainingSamples(sound_data, labels, window_size, stride, sampl
         samples = sound_data[i:i + window_size]
         if (len(samples) < window_size):
             break
+
+        x_element = np.zeros((3,3))
+        x_element[0] = FrameToFeatures(samples, sample_rate)
+        #previous 4 samples added to data
+        if(i-stride>=0):
+            samples1 = sound_data[i-stride:i-stride+window_size]
+            x_element[1] = FrameToFeatures(samples1, sample_rate)
+
+        if(i-stride*2>=0):
+            samples2 = sound_data[i-stride*2:i-stride*2+window_size]
+            x_element[2] = FrameToFeatures(samples2, sample_rate)
+        # if(i-stride*3>=0):
+        #     samples3 = sound_data[i-stride*3:i-stride*3+window_size]
+        #     x_element += FrameToFeatures(samples3, sample_rate)
+        # else: 
+        #    x_element += [0,0,0]
+
+        x_element = np.reshape(x_element, [-1])
+        results_x.append(x_element)
         l = labels[i:i + window_size]
 
         # Classify this time window as vocals
-        # Considered vocals is over 20 percent of the time is vocals
+        # Considered vocals is over 20 percent of the time is vocal
+
         is_speech = np.sum(l) > 0.2
 
-        results_x.append(FrameToFeatures(samples, sample_rate))
         if (is_speech):
             results_y.append(1)
         else:
@@ -131,10 +165,11 @@ if __name__ == "__main__":
     print(len(y_data))
     percentage = np.mean(y_data)
     print("voice percentage: " + str(percentage))
-    
+
     def GetModel():
         model = tf.keras.models.Sequential()
-        model.add(tf.keras.layers.Dense(10, activation="relu", kernel_initializer="glorot_normal", input_shape=(NUM_FEATURES,)))
+        model.add(tf.keras.layers.Dense(40, activation="relu", kernel_initializer="glorot_normal", input_shape=((NUM_FEATURES*NUM_HISTORY),)))
+        model.add(tf.keras.layers.Dense(10, activation="relu", kernel_initializer="glorot_normal"))
         model.add(tf.keras.layers.Dense(1, activation="sigmoid", kernel_initializer="glorot_normal"))
         model.compile(loss="binary_crossentropy", optimizer="adam", metrics=["accuracy"])
         return model
@@ -143,10 +178,16 @@ if __name__ == "__main__":
 
     STRIDE = int(WINDOW_SIZE / 2)
     x_train, y_train = LabelledFileToTrainingSamples(x_data, np.reshape(y_data, [-1]), WINDOW_SIZE, STRIDE, SAMPLE_RATE)
-
+    # print(x_train)
     print("voice frame percentage: " + str(np.mean(y_train)))
 
     print("Fitting model on training data")
-    history = model.fit(x_train, y_train, epochs=100, validation_split=0.2)
+    print(np.array(x_train).shape)
+    print(y_train.shape)
+    x_train = np.stack(x_train)
+    y_train = np.stack(y_train)
+    # class_weight = {0: 1.0, 1: 0.5}
+    class_weight = None
+    history = model.fit(x_train, y_train, epochs=100, validation_split=0.2, class_weight=class_weight)
 
-    model.save('./saved_models/model_3_features.h5')
+    model.save('./saved_models/model_3x9_features.h5')
