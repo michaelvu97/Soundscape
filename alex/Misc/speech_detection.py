@@ -5,12 +5,28 @@ import time
 import threading
 import sys
 
-
-
 class SpeechDetector:   
+    def __init__ (self, ):
+        print("speech detector constructor"); 
+    
+    def is_speech(self, audios):
+        if(type(audios) == type([])):
+            outputs = []
+            for a in audios:
+                outputs.append(self.signal_is_speech(a))
+            return outputs
+        else:
+            return self.signal_is_speech(audios)
+    
+    def signal_is_speech(self, audio):
+        return True
+    
+    
+    
 if __name__ == "__main__":
     vad =  SpeechDetector();
-'''
+
+    '''
     print(sr.Microphone.list_microphone_names())
    
     try:
