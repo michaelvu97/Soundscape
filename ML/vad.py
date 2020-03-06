@@ -8,38 +8,92 @@ import re
 import h5py
 import matplotlib.pyplot as plt
 
-NUM_FEATURES = 5
+NUM_FEATURES = 3
 
-def FrameToFeatures(frame_time_domain):
-    frame_length = len(frame_time_domain)
+def MergeData(window_size):
+    file_list = [
+        "./room-44100"
+    ]
+
+    wavs = np.zeros(window_size)
+    labels = np.zeros(window_size)
+    for file in file_list:
+        rate, wav_data = scipy.io.wavfile.read(file + ".wav")
+        y_labels = np.load(file + ".npy").astype(np.float32)
+
+        if rate != 44100:
+            print("input file does not have 44.1kHz sample rate: " + file)
+            return None
+
+        min_length = min(len(y_labels), len(wav_data))
+        y_labels = y_labels[:min_length]
+        wav_data = wav_data[:min_length].astype(np.float32)
+
+        padding = min_length % window_size
+        if padding == 0:
+            padding = window_size
+
+        wav_data = np.append(wav_data, np.zeros(padding))
+        y_labels = np.append(y_labels, np.zeros(padding))
+
+        if len(wav_data) != len(y_labels):
+            print("wav/y_label length mismatch")
+            return None
+
+        wavs = np.append(wavs, wav_data)
+        labels = np.append(labels, y_labels)
+    print("data loaded")
+    return (wavs, labels)
+
+
+# def FrameToFeatures(frame_time_domain):
+#     frame_length = len(frame_time_domain)
+#     frame_time_domain = np.array(frame_time_domain).astype(np.float32)
+#     # Accepts a rank 1 np.array [frame_data]
+
+#     log_frame_energy = math.log(max(np.sum(np.square(frame_time_domain)), 0.001))
+
+#     zero_crossing_rate = 0.0
+#     for i in range(frame_length - 1):
+#         if (frame_time_domain[i] >= 0) != (frame_time_domain[i + 1] >= 0):
+#             zero_crossing_rate += 1.0
+
+#     signal_delayed = frame_time_domain[1:]
+#     signal_clipped = frame_time_domain[:-1]
+
+#     normalized_autocorrelation_lag_1 = np.dot(signal_clipped, signal_delayed) / max(0.001, math.sqrt(np.sum(np.square(signal_clipped)) * np.sum(np.square(signal_delayed))))
+
+#     poly_degree = 12
+
+#     predictor_coeffs = np.polyfit(range(frame_length), frame_time_domain, poly_degree)
+#     first_linear_predictor_coeff = predictor_coeffs[0]
+
+#     # log of MSE, had to guess MSE
+#     predictor_err = np.sum(np.square(np.polyval(predictor_coeffs, range(frame_length)) - frame_time_domain))
+
+#     log_linear_predictor_err = math.log(max(predictor_err, 0.001))
+
+#     return [log_frame_energy, zero_crossing_rate, normalized_autocorrelation_lag_1, first_linear_predictor_coeff, log_linear_predictor_err]
+
+def FrameToFeatures(frame_time_domain, sampling_rate):
     frame_time_domain = np.array(frame_time_domain).astype(np.float32)
-    # Accepts a rank 1 np.array [frame_data]
-
-    log_frame_energy = math.log(max(np.sum(np.square(frame_time_domain)), 0.001))
-
-    zero_crossing_rate = 0.0
-    for i in range(frame_length - 1):
-        if (frame_time_domain[i] >= 0) != (frame_time_domain[i + 1] >= 0):
-            zero_crossing_rate += 1.0
+    # Log frame energy
+    log_frame_energy = math.log(max(np.sum(np.square(frame_time_domain)), 0.00001))
 
     signal_delayed = frame_time_domain[1:]
     signal_clipped = frame_time_domain[:-1]
-
     normalized_autocorrelation_lag_1 = np.dot(signal_clipped, signal_delayed) / max(0.001, math.sqrt(np.sum(np.square(signal_clipped)) * np.sum(np.square(signal_delayed))))
 
-    poly_degree = 12
+    # Bandpassed energy in 80 to 450 Hz
+    freq_domain_amplitude = np.abs(np.fft.fft(frame_time_domain))
+    lo_index = int((80 / (sampling_rate / 2.0)) * len(frame_time_domain))
+    hi_index = int((450 / (sampling_rate / 2.0)) * len(frame_time_domain))
+    
+    relative_energy_in_vocal_range = np.mean(freq_domain_amplitude[lo_index:hi_index]) / max(np.max(freq_domain_amplitude[lo_index:hi_index]), 0.00001)
 
-    predictor_coeffs = np.polyfit(range(frame_length), frame_time_domain, poly_degree)
-    first_linear_predictor_coeff = predictor_coeffs[0]
+    return [log_frame_energy, normalized_autocorrelation_lag_1, relative_energy_in_vocal_range]
 
-    # log of MSE, had to guess MSE
-    predictor_err = np.sum(np.square(np.polyval(predictor_coeffs, range(frame_length)) - frame_time_domain))
-
-    log_linear_predictor_err = math.log(max(predictor_err, 0.001))
-
-    return [log_frame_energy, zero_crossing_rate, normalized_autocorrelation_lag_1, first_linear_predictor_coeff, log_linear_predictor_err]
-
-def LabelledFileToTrainingSamples(sound_data, labels, window_size, stride):
+def LabelledFileToTrainingSamples(sound_data, labels, window_size, stride, sample_rate):
     # Sound data must be rank 1
     # labels must be rank 1
     results_x = []
@@ -57,7 +111,7 @@ def LabelledFileToTrainingSamples(sound_data, labels, window_size, stride):
         # Considered vocals is over 20 percent of the time is vocals
         is_speech = np.sum(l) > 0.2
 
-        results_x.append(FrameToFeatures(samples))
+        results_x.append(FrameToFeatures(samples, sample_rate))
         if (is_speech):
             results_y.append(1)
         else:
@@ -67,30 +121,15 @@ def LabelledFileToTrainingSamples(sound_data, labels, window_size, stride):
     return results_x, np.expand_dims(np.array(results_y).astype(np.float32), 1)
 
 if __name__ == "__main__":
-    rate, wav_data = scipy.io.wavfile.read("room-44100.wav")
-    y_labels = np.load("room.npy").astype(np.float32)
+    SAMPLE_RATE = 44100
+    WINDOW_SIZE = 2048
 
-    print("data loaded")
-
-    # Fix off-by-one errors
-    min_length = min(len(y_labels), len(wav_data))
-    wav_data = wav_data[:min_length].astype(np.float32)
-
-    # add some noise to the input
-    wav_data = wav_data + 25.0 * np.random.normal(size=min_length)
-
-    y_labels = y_labels[:min_length]
-
-    # Take the first n minutes of data
-    # start = 44100 * 60 * 20
-    # end = 44100 * 60 * 22
-    # wav_data = wav_data[start:end]
-    # y_labels = y_labels[start:end]
+    x_data, y_data = MergeData(WINDOW_SIZE)
 
     # Transform to windowed
 
-    print(len(y_labels))
-    percentage = np.mean(y_labels)
+    print(len(y_data))
+    percentage = np.mean(y_data)
     print("voice percentage: " + str(percentage))
     
     def GetModel():
@@ -102,13 +141,12 @@ if __name__ == "__main__":
 
     model = GetModel()
 
-    WINDOW_SIZE = 4410 # 0.1 second window
-    STRIDE = 2205
-    x_train, y_train = LabelledFileToTrainingSamples(wav_data, np.reshape(y_labels, [-1]), WINDOW_SIZE, STRIDE)
+    STRIDE = int(WINDOW_SIZE / 2)
+    x_train, y_train = LabelledFileToTrainingSamples(x_data, np.reshape(y_data, [-1]), WINDOW_SIZE, STRIDE, SAMPLE_RATE)
 
-    print(np.mean(y_train))
+    print("voice frame percentage: " + str(np.mean(y_train)))
 
     print("Fitting model on training data")
     history = model.fit(x_train, y_train, epochs=100, validation_split=0.2)
 
-    model.save('./saved_models/model.h5')
+    model.save('./saved_models/model_3_features.h5')

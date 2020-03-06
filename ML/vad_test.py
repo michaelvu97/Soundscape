@@ -10,8 +10,9 @@ class VAD:
         self.model = tf.keras.models.load_model(model_path)
 
     def is_voice(self, samples):
-        features = np.array([FrameToFeatures(samples)])
-        return self.model.predict_classes(features, verbose=0)[0][0] == 1
+        features = np.array([FrameToFeatures(samples, 44100)])
+        return self.model.predict_proba(features, verbose=0)[0][0] > 0.05
+        # return self.model.predict_classes(features, verbose=0)[0][0] == 1
 
 if __name__ == "__main__":
     rate, wav = scipy.io.wavfile.read("./sample-000010.wav")
@@ -21,10 +22,10 @@ if __name__ == "__main__":
 
     minutes_to_samples = 44100 * 60
 
-    WINDOW_SIZE = 4410 # 0.1 second window
-    STRIDE = 2205
+    WINDOW_SIZE = 2048 # 0.1 second window
+    STRIDE = int(WINDOW_SIZE/2)
 
-    vad = VAD('./saved_models/model.h5')
+    vad = VAD('./saved_models/model_3_features.h5')
 
     results = []
 
