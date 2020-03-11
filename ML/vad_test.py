@@ -8,8 +8,10 @@ import h5py
 class VAD:
     def __init__(self, model_path):
         self.model = tf.keras.models.load_model(model_path)
+        self.triggered = False
+        self.decay_factor = 0.1
 
-    def is_voice(self, samples, samples1,samples2):
+    def is_voice(self, samples, samples1,samples2, smoothing=True):
         features = []
         features += FrameToFeatures(samples, 44100)
         features += FrameToFeatures(samples1, 44100)
@@ -18,8 +20,33 @@ class VAD:
         feat_arr = np.array([features])
         feat_arr.transpose()
 
-        return self.model.predict_proba(feat_arr, verbose=0)[0][0] > 0.4
-        # return self.model.predict_classes(features, verbose=0)[0][0] == 1
+        threshold_trigger_on = 0.6
+        threshold_trigger_off = 0.5
+
+        new_prob = self.model.predict_proba(feat_arr, verbose=0)[0][0]
+        # printProbability(new_prob)
+        if smoothing and self.triggered:
+            if new_prob < threshold_trigger_off:
+                self.triggered = False
+                return False
+            return True
+        if smoothing and not self.triggered:
+            if new_prob > threshold_trigger_on:
+                self.triggered = True
+                return True
+            return False    
+
+        return new_prob > threshold_trigger_on
+
+def printProbability(prob):
+    normalized = int(prob * 10)
+    res = "["
+    for i in range(normalized):
+        res += "="
+    for i in range(10 - normalized):
+        res += " "
+    res += "]"
+    print(res)
 
 if __name__ == "__main__":
     rate, wav = scipy.io.wavfile.read("./sample-000080.wav")
@@ -33,7 +60,7 @@ if __name__ == "__main__":
     WINDOW_SIZE = 2048 # 0.1 second window
     STRIDE = int(WINDOW_SIZE/2)
 
-    vad = VAD('./saved_models/model_3x9_features.h5')
+    vad = VAD('./saved_models/model_15_features_test.h5')
 
     results = []
 
@@ -41,6 +68,7 @@ if __name__ == "__main__":
     while i < len(wav):
         if(i>STRIDE*3):
             res = vad.is_voice(wav[i:i+WINDOW_SIZE],wav[i-STRIDE:i-STRIDE+WINDOW_SIZE],wav[i-STRIDE*2:i-STRIDE*2+WINDOW_SIZE])
+
         else:
             res=0;
         # is_speech = res[0][0] > 0.5
