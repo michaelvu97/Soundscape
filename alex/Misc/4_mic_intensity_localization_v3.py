@@ -11,9 +11,9 @@ import time
 import draw_arrow
 from scipy.fftpack import fft
 import utils
-# import sys
-# sys.path.append("../../ML")
-# from vad_test import VAD
+import sys
+sys.path.append("../../ML")
+from vad_test import VAD
 from rVAD_custom import VoiceActivityDetector
 import live_calibration
 from angle_smoother import AngleSmoother
@@ -104,11 +104,10 @@ def localize(energy):
 
 form_1 = pyaudio.paInt16 # 16-bit resolution
 samp_rate = 44100 # 44.1kHz sampling rate
-chunk = 2048 #8192 # 2^12 samples for buffer
+chunk = 2048 #8192 # 2^12 samples for buffer MUST BE 2048 FOR VAD
 height = 600
 width = 1000
-
-vad = VoiceActivityDetector(samp_rate)
+vad = VAD("../../ML/saved_models/model_15_features_test.h5")
 smoother = AngleSmoother();
 
 BLACK = (  0,   0,   0)
@@ -142,6 +141,12 @@ streams = [
     ]
 
 print (len(streams))
+
+steps = 1
+step_length = int(chunk / steps)
+
+windowed_data_unfiltered_delay_1_frame = np.zeros((num_devices, step_length))
+windowed_data_unfiltered_delay_2_frame = np.zeros((num_devices, step_length))
 
 done = False
 while not done:    
@@ -178,8 +183,7 @@ while not done:
 
     length = min([len(x) for x in data])
 
-    steps = 1
-    step_length = int(length / steps)
+    
     
     for i in range(steps):
         windowed_data_unfiltered = data_unfiltered[:, i * step_length:(i + 1) * step_length]
@@ -192,7 +196,11 @@ while not done:
         # Localization using energy difference
 
         # Vector of predictions of whether each channel is voice
-        voice_confidence = vad.is_speech(windowed_data_unfiltered)
+        voice_confidence = vad.is_voice_vectorized(windowed_data_unfiltered,
+            windowed_data_unfiltered_delay_1_frame,
+            windowed_data_unfiltered_delay_2_frame)
+
+        voice_triggered = np.any(voice_confidence)
 
         # print(is_voice)
         #draw_arrow.drawVoice(screen, voice_confidence[0], voice_confidence[2], voice_confidence[1], voice_confidence[3])
@@ -202,9 +210,15 @@ while not done:
         smoother.update(angle)
         angle = smoother.getSmoothedAngle()
 
+        if not voice_triggered:
+            angle = None
+
         # OFfset the angle to align the 1st mic with forward
         if angle is not None:
-            angle = (angle + 90) % 360
+            angle = (angle + 0) % 360
 
         draw_arrow.drawArrow(screen, angle)
         pygame.display.update()
+
+        windowed_data_unfiltered_delay_2_frame = windowed_data_unfiltered_delay_1_frame
+        windowed_data_unfiltered_delay_1_frame = windowed_data_unfiltered
