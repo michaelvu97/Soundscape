@@ -4,12 +4,20 @@ import scipy
 from vad import FrameToFeatures
 import matplotlib.pyplot as plt
 import h5py
+import keras
 
 class VAD:
     def __init__(self, model_path):
-        self.model = tf.keras.models.load_model(model_path)
+        self.model = keras.models.load_model(model_path)
         self.triggered = False
         self.decay_factor = 0.1
+
+    def is_voice_vectorized(self, samples, samples1, samples2, smoothing=True):
+        return np.array(
+            [
+                self.is_voice(samples[i], samples1[i], samples2[i]) for i in range(samples.shape[0]) 
+            ]
+        )
 
     def is_voice(self, samples, samples1,samples2, smoothing=True):
         features = []
