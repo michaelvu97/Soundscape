@@ -110,7 +110,7 @@ chunk = 2048 #8192 # 2^12 samples for buffer
 height = 600
 width = 1000
 
-vad = VAD("../../ML/saved_models/model_15_features_test.h5")
+vad = VAD("../../ML/saved_models/model_15_features_test_2.h5")
 smoother = AngleSmoother();
 
 BLACK = (  0,   0,   0)

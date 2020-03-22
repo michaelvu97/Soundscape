@@ -7,14 +7,15 @@ import os
 import re
 import h5py
 import matplotlib.pyplot as plt
+from vad_test import VAD
 
 NUM_HISTORY = 3
 NUM_FEATURES = 5
 
 def MergeData(window_size):
     file_list = [
-        "./sound_files/speech",
-        "./sound_files/no_speech"
+        "./sound_files/speech_test",
+        "./sound_files/no_speech_test"
     ]
 
     wavs = np.zeros(window_size)
@@ -26,9 +27,9 @@ def MergeData(window_size):
             print("input file does not have 44.1kHz sample rate: " + file)
             return None
 
-        if(file != "./sound_files/no_speech"):
+        if(file != "./sound_files/no_speech_test"):
             y_labels = np.load(file + ".npy").astype(np.float32)
-            y_labels = y_labels[8000*window_size:len(y_labels)]
+            y_labels = y_labels[0:8000*window_size]
             y_labels = np.append(np.zeros(window_size),y_labels)
             print("LENGTH")
             print(len(wav_data))
@@ -63,37 +64,6 @@ def MergeData(window_size):
 
     print("data loaded")
     return (wavs, labels)
-
-
-# def FrameToFeatures(frame_time_domain):
-#     frame_length = len(frame_time_domain)
-#     frame_time_domain = np.array(frame_time_domain).astype(np.float32)
-#     # Accepts a rank 1 np.array [frame_data]
-
-#     log_frame_energy = math.log(max(np.sum(np.square(frame_time_domain)), 0.001))
-
-#     zero_crossing_rate = 0.0
-#     for i in range(frame_length - 1):
-#         if (frame_time_domain[i] >= 0) != (frame_time_domain[i + 1] >= 0):
-#             zero_crossing_rate += 1.0
-
-#     signal_delayed = frame_time_domain[1:]
-#     signal_clipped = frame_time_domain[:-1]
-
-#     normalized_autocorrelation_lag_1 = np.dot(signal_clipped, signal_delayed) / max(0.001, math.sqrt(np.sum(np.square(signal_clipped)) * np.sum(np.square(signal_delayed))))
-
-#     poly_degree = 12
-
-#     predictor_coeffs = np.polyfit(range(frame_length), frame_time_domain, poly_degree)
-#     first_linear_predictor_coeff = predictor_coeffs[0]
-
-#     # log of MSE, had to guess MSE
-#     predictor_err = np.sum(np.square(np.polyval(predictor_coeffs, range(frame_length)) - frame_time_domain))
-
-#     log_linear_predictor_err = math.log(max(predictor_err, 0.001))
-
-#     return [log_frame_energy, zero_crossing_rate, normalized_autocorrelation_lag_1, first_linear_predictor_coeff, log_linear_predictor_err]
-
 def FrameToFeatures(frame_time_domain, sampling_rate):
     frame_time_domain = np.array(frame_time_domain).astype(np.float32)
     # Log frame energy
@@ -173,29 +143,45 @@ if __name__ == "__main__":
     print(len(y_data))
     percentage = np.mean(y_data)
     print("voice percentage: " + str(percentage))
-    
-    def GetModel():
-        model = tf.keras.models.Sequential()
-        model.add(tf.keras.layers.Dense(50, activation="relu", kernel_initializer="glorot_normal", input_shape=(NUM_FEATURES*NUM_HISTORY,)))
-        model.add(tf.keras.layers.Dense(1, activation="sigmoid", kernel_initializer="glorot_normal"))
-        model.compile(loss="binary_crossentropy", optimizer="adam", metrics=["accuracy"])
-        return model
-
-    model = GetModel()
 
     SAMPLE_RATE = 44100
     WINDOW_SIZE = 2048
     STRIDE = int(WINDOW_SIZE / 2)
     x_train, y_train = LabelledFileToTrainingSamples(x_data, np.reshape(y_data, [-1]), WINDOW_SIZE, STRIDE, SAMPLE_RATE)
-
+    
     x_train = np.array(x_train)
     y_train = np.array(y_train)
-    #print(x_train.shape())
-    #print(y_train.shape())
+    print("SIZES!")
+    print(len(x_data)/STRIDE)
+    print(len(y_train))
     print(np.mean(y_train))
-    class_weight = {0: 1.0, 1: 5}
-    #class_weight = None
-    print("Fitting model on training data")
-    history = model.fit(x_train, y_train, epochs=150, validation_split=0.2, class_weight=class_weight)
 
-    model.save('./saved_models/model_15_features_test_2.h5')
+    false_positives = 0
+    false_negatives = 0
+
+    vad = VAD("saved_models/model_15_features_test_2.h5")
+    j=0
+    i=0
+    while j<len(y_train):
+        if(i>STRIDE*3):
+            is_voice = vad.is_voice(x_data[i:i+WINDOW_SIZE],x_data[i-STRIDE:i-STRIDE+WINDOW_SIZE],x_data[i-STRIDE*2:i-STRIDE*2+WINDOW_SIZE])
+        else:
+            is_voice = False
+
+        if(is_voice == True and y_train[j] == 0):
+            false_positives = false_positives + 1
+        if(is_voice == False and y_train[j] == 1):
+            false_negatives = false_negatives + 1
+        #print(i);
+        j=j+1
+        i=i+STRIDE
+
+    print("RESULTS:")
+    print("total error")
+    print((false_positives+false_negatives)/(len(y_train)))
+    print("false positives")
+    print(false_positives/(len(y_train)*np.mean(y_train)))
+    print("false negatives")
+    print(false_negatives/(len(y_train)*(1-np.mean(y_train))))
+
+
