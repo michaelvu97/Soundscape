@@ -174,7 +174,6 @@ if __name__ == "__main__":
             false_negatives = false_negatives + 1
         #print(i);
         j=j+1
-        i=i+STRIDE
 
     print("RESULTS:")
     print("total error")

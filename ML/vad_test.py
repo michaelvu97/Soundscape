@@ -28,8 +28,8 @@ class VAD:
         feat_arr = np.array([features])
         feat_arr.transpose()
 
-        threshold_trigger_on = 0.75
-        threshold_trigger_off = 0.6
+        threshold_trigger_on = 0.6
+        threshold_trigger_off = 0.4
 
         new_prob = self.model.predict_proba(feat_arr, verbose=0)[0][0]
         # printProbability(new_prob)
