@@ -163,24 +163,27 @@ if __name__ == "__main__":
     j=0
     i=0
     while j<len(y_train):
-        if(i>STRIDE*3):
-            is_voice = vad.is_voice(x_data[i:i+WINDOW_SIZE],x_data[i-STRIDE:i-STRIDE+WINDOW_SIZE],x_data[i-STRIDE*2:i-STRIDE*2+WINDOW_SIZE])
-        else:
-            is_voice = False
+        if np.mean(x_data[i:i+WINDOW_SIZE]) != 0:
+            if(i>STRIDE*3):
+                is_voice = vad.is_voice(x_data[i:i+WINDOW_SIZE],x_data[i-STRIDE:i-STRIDE+WINDOW_SIZE],x_data[i-STRIDE*2:i-STRIDE*2+WINDOW_SIZE])
+            else:
+                is_voice = False
 
-        if(is_voice == True and y_train[j] == 0):
-            false_positives = false_positives + 1
-        if(is_voice == False and y_train[j] == 1):
-            false_negatives = false_negatives + 1
+            if(is_voice == True and y_train[j] == 0):
+                false_positives = false_positives + 1
+            if(is_voice == False and y_train[j] == 1):
+                false_negatives = false_negatives + 1
+
         #print(i);
         j=j+1
+        i=i+STRIDE
 
     print("RESULTS:")
     print("total error")
     print((false_positives+false_negatives)/(len(y_train)))
     print("false positives")
-    print(false_positives/(len(y_train)*np.mean(y_train)))
+    print(false_positives/(len(y_train)*(1-np.mean(y_train))))
     print("false negatives")
-    print(false_negatives/(len(y_train)*(1-np.mean(y_train))))
+    print(false_negatives/(len(y_train)*np.mean(y_train)))
 
 
